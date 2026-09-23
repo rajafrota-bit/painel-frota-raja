@@ -1,0 +1,809 @@
+<title>Painel Frota Diesel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f1f4ee; --surface:#ffffff; --surface-2:#eaeee3; --border:#d7ddcd;
+    --text:#17201a; --text-muted:#5b6b5e; --text-faint:#8a988c;
+    --accent:#cf5322; --accent-ink:#fff6f0; --accent-soft:#f6e0d0;
+    --line:#1f6f5c; --line-soft:#dcece7;
+    --good:#2f8f5b; --good-soft:#e2f2e7;
+    --bad:#c23a2b; --bad-soft:#fbe4df;
+    --pace:#3d5a99; --pace-soft:#e4e9f5;
+    --prior:#9a978c;
+    --neutral-chip:#e4e8dc;
+    --shadow: 0 1px 2px rgba(23,32,26,.06), 0 6px 20px -10px rgba(23,32,26,.18);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0c1310; --surface:#131b17; --surface-2:#19221d; --border:#28352d;
+      --text:#e9ede5; --text-muted:#9fb1a3; --text-faint:#6f8277;
+      --accent:#ef7c40; --accent-ink:#20120a; --accent-soft:#3a2415;
+      --line:#5cc0a1; --line-soft:#173029;
+      --good:#57c98c; --good-soft:#123424;
+      --bad:#e2685a; --bad-soft:#3a1a16;
+      --pace:#8aabf0; --pace-soft:#1f2c4a;
+      --prior:#7c8574;
+      --neutral-chip:#1f2a23;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0c1310; --surface:#131b17; --surface-2:#19221d; --border:#28352d;
+    --text:#e9ede5; --text-muted:#9fb1a3; --text-faint:#6f8277;
+    --accent:#ef7c40; --accent-ink:#20120a; --accent-soft:#3a2415;
+    --line:#5cc0a1; --line-soft:#173029;
+    --good:#57c98c; --good-soft:#123424;
+    --bad:#e2685a; --bad-soft:#3a1a16;
+    --pace:#8aabf0; --pace-soft:#1f2c4a;
+    --prior:#7c8574;
+    --neutral-chip:#1f2a23;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -12px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',system-ui,sans-serif; padding-inline:16px; padding-block:20px 48px; max-width:1280px; margin:0 auto;}
+  h1,h2,h3{font-family:'Barlow Condensed',system-ui,sans-serif; margin:0; letter-spacing:.2px; text-wrap:balance;}
+  .num{font-family:'IBM Plex Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums;}
+  a{color:var(--accent);}
+
+  /* ---- header ---- */
+  .eyebrow{font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:13px; letter-spacing:1.6px; text-transform:uppercase; color:var(--accent);}
+  header.top{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:12px; padding-block:4px 18px; border-bottom:1px solid var(--border); margin-bottom:18px;}
+  header.top h1{font-size:clamp(28px,4.5vw,38px); font-weight:700; line-height:1.05;}
+  .meta{font-size:12.5px; color:var(--text-muted); text-align:right; line-height:1.5;}
+  .meta b{color:var(--text);}
+  .badge-parcial{display:inline-block; background:var(--accent-soft); color:var(--accent); border-radius:20px; padding:1px 8px; font-size:11px; font-weight:600; margin-left:5px;}
+
+  /* ---- filters ---- */
+  .filterbar{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:var(--bg); padding-block:10px; border-bottom:1px solid var(--border); margin-bottom:20px; display:flex; flex-direction:column; gap:10px;}
+  .filter-row{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  .filter-label{font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); margin-right:2px; white-space:nowrap;}
+  .chip{border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:20px; padding:5px 13px; font-size:13.5px; cursor:pointer; font-family:'IBM Plex Sans',sans-serif; transition:.12s; line-height:1.3;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:600;}
+  .chip.clearall{background:var(--surface-2); font-weight:500;}
+  .preset{border:1px solid var(--border); background:var(--surface); color:var(--text-muted); border-radius:7px; padding:6px 12px; font-size:13px; cursor:pointer; font-family:'IBM Plex Sans',sans-serif;}
+  .preset.active{background:var(--surface-2); color:var(--text); font-weight:600; border-color:var(--text-faint);}
+  .chip.toggle{display:inline-flex; align-items:center; gap:7px; user-select:none;}
+  .chip.toggle input{accent-color:var(--accent); width:14px; height:14px; cursor:pointer;}
+  .chip.toggle:has(input:checked){background:var(--accent-soft); border-color:var(--accent); color:var(--text); font-weight:600;}
+  .filter-hint{font-size:12px; color:var(--text-faint);}
+
+  /* ---- kpis ---- */
+  .kpi-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:26px;}
+  @media (max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:520px){.kpi-grid{grid-template-columns:1fr;}}
+  .kpi{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow);}
+  .kpi .k-label{font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; color:var(--text-faint);}
+  .kpi .k-real{font-size:26px; font-weight:600; margin-top:4px;}
+  .kpi .k-sub{font-size:12.5px; color:var(--text-muted); margin-top:2px;}
+  .kpi .k-pill{display:inline-block; margin-top:8px; font-size:12px; font-weight:600; padding:2px 9px; border-radius:20px;}
+  .pill-good{background:var(--good-soft); color:var(--good);}
+  .pill-bad{background:var(--bad-soft); color:var(--bad);}
+  .pill-neutral{background:var(--surface-2); color:var(--text-muted);}
+  .k-bar{height:5px; border-radius:4px; background:var(--surface-2); margin-top:10px; overflow:hidden;}
+  .k-bar > div{height:100%; background:var(--accent);}
+
+  /* ---- panels ---- */
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:16px; box-shadow:var(--shadow);}
+  .panel-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; flex-wrap:wrap; gap:6px;}
+  .panel-head h2{font-size:21px; font-weight:600;}
+  .panel-head .unit{font-size:12px; color:var(--text-faint);}
+  .chart-pair{display:grid; grid-template-columns:1.4fr 1fr; gap:18px;}
+  @media (max-width:800px){.chart-pair{grid-template-columns:1fr;}}
+  .chart-box{position:relative; height:230px;}
+  .chart-box.tall{height:360px;}
+  .chart-title{font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.6px; margin-bottom:4px;}
+  .legend-line{display:flex; gap:14px; font-size:12px; color:var(--text-muted); margin-top:6px; flex-wrap:wrap;}
+  .legend-line span{display:inline-flex; align-items:center; gap:5px;}
+  .sw{width:10px; height:10px; border-radius:2px; display:inline-block;}
+
+  /* ---- table ---- */
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow);}
+  table{border-collapse:collapse; width:100%; min-width:760px; font-size:13.5px;}
+  thead th{position:sticky; top:0; background:var(--surface-2); text-align:right; padding:9px 12px; font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); cursor:pointer; white-space:nowrap; border-bottom:1px solid var(--border);}
+  thead th:first-child, tbody td:first-child{text-align:left;}
+  thead th.sorted{color:var(--accent);}
+  tbody td{padding:8px 12px; text-align:right; border-bottom:1px solid var(--border);}
+  tbody tr:hover{background:var(--surface-2);}
+  tbody tr:last-child td{border-bottom:none;}
+  .var-tag{font-weight:600;}
+  .foot-note{font-size:12px; color:var(--text-faint); margin-top:22px; line-height:1.6; border-top:1px solid var(--border); padding-top:14px;}
+</style>
+
+<header class="top">
+  <div>
+    <div class="eyebrow">RAJA LOG · Gestão de Frota</div>
+    <h1>Combustível, Arla &amp; KM — Real × Orçado</h1>
+  </div>
+  <div class="meta">
+    Dados reais até <b id="metaDataCorte">–</b><span class="badge-parcial" id="metaParcial"></span><br>
+    Painel gerado em <b id="metaGerado">–</b>
+  </div>
+</header>
+
+<div class="filterbar">
+  <div class="filter-row" id="filialRow">
+    <span class="filter-label">Filiais</span>
+    <button class="chip clearall" id="chipTodas" data-action="all">Todas</button>
+  </div>
+  <div class="filter-row" id="periodRow">
+    <span class="filter-label">Período</span>
+  </div>
+  <div class="filter-row">
+    <span class="filter-label">Comparativo</span>
+    <label class="chip toggle" for="yoyToggle">
+      <input type="checkbox" id="yoyToggle">
+      Comparar com 2025
+    </label>
+  </div>
+  <div class="filter-hint" id="filterHint"></div>
+</div>
+
+<section class="kpi-grid" id="kpiGrid"></section>
+
+<section class="panel" id="panel-combustivel">
+  <div class="panel-head"><h2>Combustível (Diesel)</h2><span class="unit">R$</span></div>
+  <div class="chart-pair">
+    <div>
+      <div class="chart-title trend-title">Evolução mensal — real x orçado · clique num mês pra filtrar</div>
+      <div class="chart-box"><canvas id="chart-combustivel-trend"></canvas></div>
+      <div class="legend-line" id="caption-combustivel-trend"></div>
+    </div>
+    <div>
+      <div class="chart-title">Por filial — clique numa barra para focar</div>
+      <div class="chart-box tall"><canvas id="chart-combustivel-unid"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="panel-arla">
+  <div class="panel-head"><h2>Arla 32</h2><span class="unit">R$</span></div>
+  <div class="chart-pair">
+    <div>
+      <div class="chart-title trend-title">Evolução mensal — real x orçado · clique num mês pra filtrar</div>
+      <div class="chart-box"><canvas id="chart-arla-trend"></canvas></div>
+      <div class="legend-line" id="caption-arla-trend"></div>
+    </div>
+    <div>
+      <div class="chart-title">Por filial — clique numa barra para focar</div>
+      <div class="chart-box tall"><canvas id="chart-arla-unid"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="panel-km">
+  <div class="panel-head"><h2>KM Rodado</h2><span class="unit">km</span></div>
+  <div class="chart-pair">
+    <div>
+      <div class="chart-title trend-title">Evolução mensal — real x orçado · clique num mês pra filtrar</div>
+      <div class="chart-box"><canvas id="chart-km-trend"></canvas></div>
+      <div class="legend-line" id="caption-km-trend"></div>
+    </div>
+    <div>
+      <div class="chart-title">Por filial — clique numa barra para focar</div>
+      <div class="chart-box tall"><canvas id="chart-km-unid"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Detalhe por filial</h2><span class="unit" id="tblPeriodLabel"></span></div>
+  <div class="tbl-wrap">
+    <table id="detailTable">
+      <thead>
+        <tr>
+          <th data-key="unidade" style="text-align:left">Filial</th>
+          <th data-key="comb_real">Combust. real</th>
+          <th data-key="comb_plan">Combust. orç.</th>
+          <th data-key="comb_var">Var. %</th>
+          <th data-key="arla_real">Arla real</th>
+          <th data-key="arla_plan">Arla orç.</th>
+          <th data-key="arla_var">Var. %</th>
+          <th data-key="km_real">KM real</th>
+          <th data-key="km_plan">KM orç.</th>
+          <th data-key="km_var">Var. %</th>
+        </tr>
+      </thead>
+      <tbody id="detailBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<div class="foot-note">
+  Cobre as 12 filiais operacionais RAJA LOG com orçamento definido no Banco de Orçamento de Despesas da Frota. Unidades administrativas e de retirada (ADM, Diretoria, Fazenda, Kemigas, retiradas) não têm orçamento próprio e ficam fora deste comparativo. Combustível considera abastecimentos de diesel (todas as variantes); Arla considera Arla 32. Valores de KM vêm do hodômetro registrado em cada abastecimento de diesel. O mês corrente é parcial — reflete apenas os abastecimentos já lançados até a data de corte.
+</div>
+
+<script id="dashdata" type="application/json">{"gerado_em": "22/09/2026 09:15", "dados_reais_ate": "20/09/2026", "mes_parcial": "2026-09", "unidades": ["Belém", "Conquista", "Goiânia", "Granel", "Ilhéus", "Jequié", "Maranhão", "Recife", "Salvador", "Serra", "Teixeira", "Valadares"], "meses": ["2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"], "series": {"Belém|2025-01": {"combustivel": {"real": 197771.73, "planejado": 206443.0}, "arla": {"real": 7602.26, "planejado": 11016.0}, "km": {"real": 100194.0, "planejado": 119283.0}}, "Belém|2025-02": {"combustivel": {"real": 154239.96, "planejado": 206449.0}, "arla": {"real": 5218.92, "planejado": 11017.0}, "km": {"real": 79126.0, "planejado": 119283.0}}, "Belém|2025-03": {"combustivel": {"real": 182787.16, "planejado": 206449.0}, "arla": {"real": 6546.42, "planejado": 11017.0}, "km": {"real": 91562.0, "planejado": 144131.0}}, "Belém|2025-04": {"combustivel": {"real": 129742.32, "planejado": 179216.0}, "arla": {"real": 5169.57, "planejado": 9541.0}, "km": {"real": 68006.0, "planejado": 101677.0}}, "Belém|2025-05": {"combustivel": {"real": 176681.26, "planejado": 217766.0}, "arla": {"real": 5775.75, "planejado": 11593.0}, "km": {"real": 91519.0, "planejado": 139548.0}}, "Belém|2025-06": {"combustivel": {"real": 138269.52, "planejado": 214659.0}, "arla": {"real": 3999.66, "planejado": 11507.0}, "km": {"real": 77347.0, "planejado": 134238.0}}, "Belém|2025-07": {"combustivel": {"real": 141334.16, "planejado": 209425.0}, "arla": {"real": 3403.36, "planejado": 11218.0}, "km": {"real": 79040.0, "planejado": 121253.0}}, "Belém|2025-08": {"combustivel": {"real": 166394.58, "planejado": 220747.0}, "arla": {"real": 4140.74, "planejado": 11828.0}, "km": {"real": 89640.0, "planejado": 116427.0}}, "Belém|2025-09": {"combustivel": {"real": 169959.03, "planejado": 209638.0}, "arla": {"real": 5208.01, "planejado": 11221.0}, "km": {"real": 89342.0, "planejado": 110254.0}}, "Belém|2025-10": {"combustivel": {"real": 171690.19, "planejado": 209638.0}, "arla": {"real": 4728.79, "planejado": 11221.0}, "km": {"real": 91278.0, "planejado": 110254.0}}, "Belém|2025-11": {"combustivel": {"real": 160126.87, "planejado": 209638.0}, "arla": {"real": 4680.75, "planejado": 11221.0}, "km": {"real": 88871.0, "planejado": 110254.0}}, "Belém|2025-12": {"combustivel": {"real": 159974.95, "planejado": 209638.0}, "arla": {"real": 5516.55, "planejado": 11221.0}, "km": {"real": 88059.0, "planejado": 110254.0}}, "Belém|2026-01": {"combustivel": {"real": 158150.51, "planejado": 166697.0}, "arla": {"real": 4148.34, "planejado": 3691.0}, "km": {"real": 88647.0, "planejado": 89512.0}}, "Belém|2026-02": {"combustivel": {"real": 151895.94, "planejado": 145097.0}, "arla": {"real": 4805.66, "planejado": 3204.0}, "km": {"real": 85261.0, "planejado": 77965.0}}, "Belém|2026-03": {"combustivel": {"real": 189168.7, "planejado": 165671.0}, "arla": {"real": 4247.4, "planejado": 3672.0}, "km": {"real": 93128.0, "planejado": 89080.0}}, "Belém|2026-04": {"combustivel": {"real": 231509.44, "planejado": 129929.0}, "arla": {"real": 5642.17, "planejado": 2864.0}, "km": {"real": 98577.0, "planejado": 69866.0}}, "Belém|2026-05": {"combustivel": {"real": 237438.95, "planejado": 170861.0}, "arla": {"real": 5471.45, "planejado": 3789.0}, "km": {"real": 106253.0, "planejado": 91889.0}}, "Belém|2026-06": {"combustivel": {"real": 219969.47, "planejado": 148011.0}, "arla": {"real": 6514.61, "planejado": 3276.0}, "km": {"real": 101667.0, "planejado": 79639.0}}, "Belém|2026-07": {"combustivel": {"real": 242794.16, "planejado": 149187.0}, "arla": {"real": 6138.23, "planejado": 3300.0}, "km": {"real": 113207.0, "planejado": 80263.0}}, "Belém|2026-08": {"combustivel": {"real": 229323.52, "planejado": 171199.0}, "arla": {"real": 5920.5, "planejado": 3796.0}, "km": {"real": 112775.0, "planejado": 92014.0}}, "Belém|2026-09": {"combustivel": {"real": 114023.15, "planejado": 178346.0}, "arla": {"real": 2482.04, "planejado": 3957.0}, "km": {"real": 55771.0, "planejado": 95845.0}}, "Belém|2026-10": {"combustivel": {"real": null, "planejado": 203926.0}, "arla": {"real": null, "planejado": 4540.0}, "km": {"real": null, "planejado": 110044.0}}, "Belém|2026-11": {"combustivel": {"real": null, "planejado": 182779.0}, "arla": {"real": null, "planejado": 4066.0}, "km": {"real": null, "planejado": 98914.0}}, "Belém|2026-12": {"combustivel": {"real": null, "planejado": 169276.0}, "arla": {"real": null, "planejado": 3751.0}, "km": {"real": null, "planejado": 90965.0}}, "Conquista|2025-01": {"combustivel": {"real": 57400.22, "planejado": 45659.0}, "arla": {"real": 0.0, "planejado": 548.0}, "km": {"real": 26138.0, "planejado": 26665.0}}, "Conquista|2025-02": {"combustivel": {"real": 58162.15, "planejado": 42763.0}, "arla": {"real": 0.0, "planejado": 548.0}, "km": {"real": 26361.0, "planejado": 22724.0}}, "Conquista|2025-03": {"combustivel": {"real": 57894.65, "planejado": 36973.0}, "arla": {"real": 0.0, "planejado": 548.0}, "km": {"real": 26439.0, "planejado": 21626.0}}, "Conquista|2025-04": {"combustivel": {"real": 60510.71, "planejado": 45445.0}, "arla": {"real": 0.0, "planejado": 521.0}, "km": {"real": 27704.0, "planejado": 24748.0}}, "Conquista|2025-05": {"combustivel": {"real": 65658.19, "planejado": 50845.0}, "arla": {"real": 572.65, "planejado": 679.0}, "km": {"real": 30177.0, "planejado": 28362.0}}, "Conquista|2025-06": {"combustivel": {"real": 51268.71, "planejado": 43647.0}, "arla": {"real": 450.59, "planejado": 643.0}, "km": {"real": 24698.0, "planejado": 24651.0}}, "Conquista|2025-07": {"combustivel": {"real": 71060.1, "planejado": 49091.0}, "arla": {"real": 570.78, "planejado": 591.0}, "km": {"real": 35988.0, "planejado": 27942.0}}, "Conquista|2025-08": {"combustivel": {"real": 48571.94, "planejado": 56207.0}, "arla": {"real": 55.79, "planejado": 755.0}, "km": {"real": 24853.0, "planejado": 25779.0}}, "Conquista|2025-09": {"combustivel": {"real": 71659.74, "planejado": 45169.0}, "arla": {"real": 242.99, "planejado": 822.0}, "km": {"real": 35101.0, "planejado": 19389.0}}, "Conquista|2025-10": {"combustivel": {"real": 69960.66, "planejado": 47397.0}, "arla": {"real": 433.95, "planejado": 822.0}, "km": {"real": 31381.0, "planejado": 20644.0}}, "Conquista|2025-11": {"combustivel": {"real": 72875.19, "planejado": 46889.0}, "arla": {"real": 246.57, "planejado": 822.0}, "km": {"real": 33151.0, "planejado": 20354.0}}, "Conquista|2025-12": {"combustivel": {"real": 62365.4, "planejado": 47534.0}, "arla": {"real": 294.09, "planejado": 822.0}, "km": {"real": 28634.0, "planejado": 20636.0}}, "Conquista|2026-01": {"combustivel": {"real": 36483.57, "planejado": 35477.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 19113.0, "planejado": 19050.0}}, "Conquista|2026-02": {"combustivel": {"real": 31644.61, "planejado": 31303.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 16434.0, "planejado": 17116.0}}, "Conquista|2026-03": {"combustivel": {"real": 57889.06, "planejado": 26648.0}, "arla": {"real": 219.74, "planejado": 0.0}, "km": {"real": 24815.0, "planejado": 14799.0}}, "Conquista|2026-04": {"combustivel": {"real": 49371.94, "planejado": 21860.0}, "arla": {"real": 65.72, "planejado": 0.0}, "km": {"real": 20050.0, "planejado": 12304.0}}, "Conquista|2026-05": {"combustivel": {"real": 44623.89, "planejado": 30526.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 18942.0, "planejado": 16495.0}}, "Conquista|2026-06": {"combustivel": {"real": 43090.31, "planejado": 31373.0}, "arla": {"real": 81.09, "planejado": 0.0}, "km": {"real": 19539.0, "planejado": 17113.0}}, "Conquista|2026-07": {"combustivel": {"real": 51560.93, "planejado": 30842.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 22588.0, "planejado": 16618.0}}, "Conquista|2026-08": {"combustivel": {"real": 41555.73, "planejado": 26985.0}, "arla": {"real": 55.31, "planejado": 0.0}, "km": {"real": 17241.0, "planejado": 14737.0}}, "Conquista|2026-09": {"combustivel": {"real": 23524.92, "planejado": 32738.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 11025.0, "planejado": 17996.0}}, "Conquista|2026-10": {"combustivel": {"real": null, "planejado": 34622.0}, "arla": {"real": null, "planejado": 0.0}, "km": {"real": null, "planejado": 18757.0}}, "Conquista|2026-11": {"combustivel": {"real": null, "planejado": 30686.0}, "arla": {"real": null, "planejado": 0.0}, "km": {"real": null, "planejado": 16972.0}}, "Conquista|2026-12": {"combustivel": {"real": null, "planejado": 34362.0}, "arla": {"real": null, "planejado": 0.0}, "km": {"real": null, "planejado": 19107.0}}, "Goiânia|2025-01": {"combustivel": {"real": null, "planejado": null}, "arla": {"real": null, "planejado": null}, "km": {"real": null, "planejado": null}}, "Goiânia|2025-02": {"combustivel": {"real": null, "planejado": null}, "arla": {"real": null, "planejado": null}, "km": {"real": null, "planejado": null}}, "Goiânia|2025-03": {"combustivel": {"real": null, "planejado": null}, "arla": {"real": null, "planejado": null}, "km": {"real": null, "planejado": null}}, "Goiânia|2025-04": {"combustivel": {"real": null, "planejado": null}, "arla": {"real": null, "planejado": null}, "km": {"real": null, "planejado": null}}, "Goiânia|2025-05": {"combustivel": {"real": null, "planejado": null}, "arla": {"real": null, "planejado": null}, "km": {"real": null, "planejado": null}}, "Goiânia|2025-06": {"combustivel": {"real": null, "planejado": null}, "arla": {"real": null, "planejado": null}, "km": {"real": null, "planejado": null}}, "Goiânia|2025-07": {"combustivel": {"real": null, "planejado": null}, "arla": {"real": null, "planejado": null}, "km": {"real": null, "planejado": null}}, "Goiânia|2025-08": {"combustivel": {"real": 9787.9, "planejado": null}, "arla": {"real": 434.55, "planejado": null}, "km": {"real": 7091.0, "planejado": null}}, "Goiânia|2025-09": {"combustivel": {"real": 48231.59, "planejado": null}, "arla": {"real": 1379.38, "planejado": null}, "km": {"real": 22394.0, "planejado": null}}, "Goiânia|2025-10": {"combustivel": {"real": 52562.17, "planejado": null}, "arla": {"real": 1652.53, "planejado": null}, "km": {"real": 24546.0, "planejado": null}}, "Goiânia|2025-11": {"combustivel": {"real": 61832.17, "planejado": null}, "arla": {"real": 1456.83, "planejado": null}, "km": {"real": 27842.0, "planejado": null}}, "Goiânia|2025-12": {"combustivel": {"real": 65578.97, "planejado": null}, "arla": {"real": 1816.43, "planejado": null}, "km": {"real": 29231.0, "planejado": null}}, "Goiânia|2026-01": {"combustivel": {"real": 58936.36, "planejado": 76941.0}, "arla": {"real": 1417.17, "planejado": 3210.0}, "km": {"real": 26121.0, "planejado": 34800.0}}, "Goiânia|2026-02": {"combustivel": {"real": 60925.56, "planejado": 76941.0}, "arla": {"real": 1266.55, "planejado": 3210.0}, "km": {"real": 27719.0, "planejado": 34800.0}}, "Goiânia|2026-03": {"combustivel": {"real": 89796.53, "planejado": 76941.0}, "arla": {"real": 1519.0, "planejado": 3210.0}, "km": {"real": 31603.0, "planejado": 34800.0}}, "Goiânia|2026-04": {"combustivel": {"real": 85157.33, "planejado": 76941.0}, "arla": {"real": 1449.43, "planejado": 3210.0}, "km": {"real": 30367.0, "planejado": 34800.0}}, "Goiânia|2026-05": {"combustivel": {"real": 77601.38, "planejado": 76941.0}, "arla": {"real": 1583.99, "planejado": 3210.0}, "km": {"real": 29931.0, "planejado": 34800.0}}, "Goiânia|2026-06": {"combustivel": {"real": 79072.37, "planejado": 76941.0}, "arla": {"real": 1485.95, "planejado": 3210.0}, "km": {"real": 30135.0, "planejado": 34800.0}}, "Goiânia|2026-07": {"combustivel": {"real": 90262.15, "planejado": 76941.0}, "arla": {"real": 2286.75, "planejado": 3210.0}, "km": {"real": 36894.0, "planejado": 34800.0}}, "Goiânia|2026-08": {"combustivel": {"real": 83557.56, "planejado": 76941.0}, "arla": {"real": 2226.12, "planejado": 3210.0}, "km": {"real": 35791.0, "planejado": 34800.0}}, "Goiânia|2026-09": {"combustivel": {"real": 57312.04, "planejado": 76941.0}, "arla": {"real": 1711.75, "planejado": 3210.0}, "km": {"real": 23268.0, "planejado": 34800.0}}, "Goiânia|2026-10": {"combustivel": {"real": null, "planejado": 76941.0}, "arla": {"real": null, "planejado": 3210.0}, "km": {"real": null, "planejado": 34800.0}}, "Goiânia|2026-11": {"combustivel": {"real": null, "planejado": 76941.0}, "arla": {"real": null, "planejado": 3210.0}, "km": {"real": null, "planejado": 34800.0}}, "Goiânia|2026-12": {"combustivel": {"real": null, "planejado": 76941.0}, "arla": {"real": null, "planejado": 3210.0}, "km": {"real": null, "planejado": 34800.0}}, "Granel|2025-01": {"combustivel": {"real": 78617.94, "planejado": 181964.0}, "arla": {"real": 2054.37, "planejado": 6856.0}, "km": {"real": 31266.0, "planejado": 80009.0}}, "Granel|2025-02": {"combustivel": {"real": 78891.18, "planejado": 181964.0}, "arla": {"real": 2375.91, "planejado": 6856.0}, "km": {"real": 27661.0, "planejado": 80009.0}}, "Granel|2025-03": {"combustivel": {"real": 102337.52, "planejado": 328056.0}, "arla": {"real": 2478.84, "planejado": 13028.0}, "km": {"real": 33705.0, "planejado": 152009.0}}, "Granel|2025-04": {"combustivel": {"real": 140429.44, "planejado": 328056.0}, "arla": {"real": 4366.18, "planejado": 13028.0}, "km": {"real": 56902.0, "planejado": 152009.0}}, "Granel|2025-05": {"combustivel": {"real": 191865.42, "planejado": 328056.0}, "arla": {"real": 5711.72, "planejado": 13028.0}, "km": {"real": 62253.0, "planejado": 152009.0}}, "Granel|2025-06": {"combustivel": {"real": 395294.48, "planejado": 551704.0}, "arla": {"real": 20910.91, "planejado": 21947.0}, "km": {"real": 177572.0, "planejado": 256056.0}}, "Granel|2025-07": {"combustivel": {"real": 502986.27, "planejado": 551704.0}, "arla": {"real": 27943.14, "planejado": 21947.0}, "km": {"real": 223665.0, "planejado": 256056.0}}, "Granel|2025-08": {"combustivel": {"real": 449248.45, "planejado": 551704.0}, "arla": {"real": 27913.0, "planejado": 21947.0}, "km": {"real": 200658.0, "planejado": 256056.0}}, "Granel|2025-09": {"combustivel": {"real": 414975.84, "planejado": 609946.0}, "arla": {"real": 26739.39, "planejado": 24518.0}, "km": {"real": 181982.0, "planejado": 286056.0}}, "Granel|2025-10": {"combustivel": {"real": 431823.47, "planejado": 609946.0}, "arla": {"real": 27624.07, "planejado": 24518.0}, "km": {"real": 188704.0, "planejado": 286056.0}}, "Granel|2025-11": {"combustivel": {"real": 444430.15, "planejado": 609946.0}, "arla": {"real": 26405.39, "planejado": 24518.0}, "km": {"real": 193345.0, "planejado": 286056.0}}, "Granel|2025-12": {"combustivel": {"real": 475401.2, "planejado": 609946.0}, "arla": {"real": 28629.56, "planejado": 24518.0}, "km": {"real": 211683.0, "planejado": 286056.0}}, "Granel|2026-01": {"combustivel": {"real": 434986.4, "planejado": 491680.0}, "arla": {"real": 24928.4, "planejado": 22853.0}, "km": {"real": 194005.0, "planejado": 217689.0}}, "Granel|2026-02": {"combustivel": {"real": 446277.5, "planejado": 490009.0}, "arla": {"real": 21141.15, "planejado": 22807.0}, "km": {"real": 204294.0, "planejado": 216970.0}}, "Granel|2026-03": {"combustivel": {"real": 633962.27, "planejado": 603171.0}, "arla": {"real": 31026.42, "planejado": 28784.0}, "km": {"real": 233005.0, "planejado": 271642.0}}, "Granel|2026-04": {"combustivel": {"real": 661003.09, "planejado": 609795.0}, "arla": {"real": 29180.51, "planejado": 28968.0}, "km": {"real": 235544.0, "planejado": 274491.0}}, "Granel|2026-05": {"combustivel": {"real": 613813.52, "planejado": 612457.0}, "arla": {"real": 27075.5, "planejado": 29042.0}, "km": {"real": 233588.0, "planejado": 275636.0}}, "Granel|2026-06": {"combustivel": {"real": 703138.19, "planejado": 573948.0}, "arla": {"real": 33418.92, "planejado": 27529.0}, "km": {"real": 272372.0, "planejado": 258537.0}}, "Granel|2026-07": {"combustivel": {"real": 709239.62, "planejado": 648295.0}, "arla": {"real": 35606.91, "planejado": 30684.0}, "km": {"real": 282544.0, "planejado": 292047.0}}, "Granel|2026-08": {"combustivel": {"real": 682451.17, "planejado": 608966.0}, "arla": {"real": 35527.09, "planejado": 28998.0}, "km": {"real": 269328.0, "planejado": 274174.0}}, "Granel|2026-09": {"combustivel": {"real": 392360.92, "planejado": 599354.0}, "arla": {"real": 14336.69, "planejado": 28678.0}, "km": {"real": 155526.0, "planejado": 270000.0}}, "Granel|2026-10": {"combustivel": {"real": null, "planejado": 599354.0}, "arla": {"real": null, "planejado": 28678.0}, "km": {"real": null, "planejado": 270000.0}}, "Granel|2026-11": {"combustivel": {"real": null, "planejado": 599354.0}, "arla": {"real": null, "planejado": 28678.0}, "km": {"real": null, "planejado": 270000.0}}, "Granel|2026-12": {"combustivel": {"real": null, "planejado": 599354.0}, "arla": {"real": null, "planejado": 28678.0}, "km": {"real": null, "planejado": 270000.0}}, "Ilhéus|2025-01": {"combustivel": {"real": 58363.5, "planejado": 51673.0}, "arla": {"real": 593.23, "planejado": 630.0}, "km": {"real": 31237.0, "planejado": 26030.0}}, "Ilhéus|2025-02": {"combustivel": {"real": 61191.39, "planejado": 51673.0}, "arla": {"real": 475.3, "planejado": 630.0}, "km": {"real": 29728.0, "planejado": 26030.0}}, "Ilhéus|2025-03": {"combustivel": {"real": 54805.96, "planejado": 42184.0}, "arla": {"real": 332.33, "planejado": 585.0}, "km": {"real": 28795.0, "planejado": 25040.0}}, "Ilhéus|2025-04": {"combustivel": {"real": 57120.79, "planejado": 59608.0}, "arla": {"real": 270.09, "planejado": 704.0}, "km": {"real": 32367.0, "planejado": 28768.0}}, "Ilhéus|2025-05": {"combustivel": {"real": 63548.91, "planejado": 42847.0}, "arla": {"real": 483.6, "planejado": 445.0}, "km": {"real": 35426.0, "planejado": 24847.0}}, "Ilhéus|2025-06": {"combustivel": {"real": 64737.5, "planejado": 49275.0}, "arla": {"real": 563.62, "planejado": 581.0}, "km": {"real": 35800.0, "planejado": 26645.0}}, "Ilhéus|2025-07": {"combustivel": {"real": 73821.1, "planejado": 60422.0}, "arla": {"real": 302.5, "planejado": 803.0}, "km": {"real": 38641.0, "planejado": 31139.0}}, "Ilhéus|2025-08": {"combustivel": {"real": 67680.03, "planejado": 55700.0}, "arla": {"real": 697.93, "planejado": 663.0}, "km": {"real": 35165.0, "planejado": 29736.0}}, "Ilhéus|2025-09": {"combustivel": {"real": 59483.32, "planejado": 51673.0}, "arla": {"real": 1204.12, "planejado": 630.0}, "km": {"real": 30996.0, "planejado": 27102.0}}, "Ilhéus|2025-10": {"combustivel": {"real": 59871.44, "planejado": 51673.0}, "arla": {"real": 768.8, "planejado": 630.0}, "km": {"real": 30076.0, "planejado": 27102.0}}, "Ilhéus|2025-11": {"combustivel": {"real": 61886.62, "planejado": 51673.0}, "arla": {"real": 776.03, "planejado": 630.0}, "km": {"real": 31119.0, "planejado": 27102.0}}, "Ilhéus|2025-12": {"combustivel": {"real": 75121.68, "planejado": 51673.0}, "arla": {"real": 1309.05, "planejado": 630.0}, "km": {"real": 37736.0, "planejado": 27102.0}}, "Ilhéus|2026-01": {"combustivel": {"real": 37231.33, "planejado": 28754.0}, "arla": {"real": 514.16, "planejado": 702.0}, "km": {"real": 20562.0, "planejado": 18075.0}}, "Ilhéus|2026-02": {"combustivel": {"real": 34548.98, "planejado": 29572.0}, "arla": {"real": 661.77, "planejado": 704.0}, "km": {"real": 21735.0, "planejado": 18718.0}}, "Ilhéus|2026-03": {"combustivel": {"real": 49458.15, "planejado": 26987.0}, "arla": {"real": 751.62, "planejado": 543.0}, "km": {"real": 23672.0, "planejado": 16573.0}}, "Ilhéus|2026-04": {"combustivel": {"real": 48631.71, "planejado": 30224.0}, "arla": {"real": 0.0, "planejado": 844.0}, "km": {"real": 20636.0, "planejado": 19414.0}}, "Ilhéus|2026-05": {"combustivel": {"real": 39861.16, "planejado": 34307.0}, "arla": {"real": 13.2, "planejado": 707.0}, "km": {"real": 18597.0, "planejado": 21171.0}}, "Ilhéus|2026-06": {"combustivel": {"real": 40203.29, "planejado": 34772.0}, "arla": {"real": 69.3, "planejado": 842.0}, "km": {"real": 18365.0, "planejado": 21895.0}}, "Ilhéus|2026-07": {"combustivel": {"real": 50712.18, "planejado": 35265.0}, "arla": {"real": 67.18, "planejado": 882.0}, "km": {"real": 23937.0, "planejado": 22264.0}}, "Ilhéus|2026-08": {"combustivel": {"real": 43628.44, "planejado": 35081.0}, "arla": {"real": 60.78, "planejado": 814.0}, "km": {"real": 20344.0, "planejado": 21606.0}}, "Ilhéus|2026-09": {"combustivel": {"real": 25707.24, "planejado": 31337.0}, "arla": {"real": 0.0, "planejado": 616.0}, "km": {"real": 11773.0, "planejado": 19429.0}}, "Ilhéus|2026-10": {"combustivel": {"real": null, "planejado": 29151.0}, "arla": {"real": null, "planejado": 673.0}, "km": {"real": null, "planejado": 18089.0}}, "Ilhéus|2026-11": {"combustivel": {"real": null, "planejado": 26966.0}, "arla": {"real": null, "planejado": 631.0}, "km": {"real": null, "planejado": 16625.0}}, "Ilhéus|2026-12": {"combustivel": {"real": null, "planejado": 33145.0}, "arla": {"real": null, "planejado": 681.0}, "km": {"real": null, "planejado": 20430.0}}, "Jequié|2025-01": {"combustivel": {"real": 231820.44, "planejado": 263572.0}, "arla": {"real": 1889.67, "planejado": 3680.0}, "km": {"real": 109994.0, "planejado": 97706.0}}, "Jequié|2025-02": {"combustivel": {"real": 199290.64, "planejado": 216085.0}, "arla": {"real": 1523.49, "planejado": 3245.0}, "km": {"real": 92532.0, "planejado": 82988.0}}, "Jequié|2025-03": {"combustivel": {"real": 211556.5, "planejado": 196297.0}, "arla": {"real": 2683.09, "planejado": 2977.0}, "km": {"real": 100470.0, "planejado": 93656.0}}, "Jequié|2025-04": {"combustivel": {"real": 197242.39, "planejado": 250627.0}, "arla": {"real": 2731.2, "planejado": 3681.0}, "km": {"real": 93715.0, "planejado": 93294.0}}, "Jequié|2025-05": {"combustivel": {"real": 254411.81, "planejado": 262333.0}, "arla": {"real": 3530.7, "planejado": 3462.0}, "km": {"real": 119103.0, "planejado": 118105.0}}, "Jequié|2025-06": {"combustivel": {"real": 249158.39, "planejado": 254694.0}, "arla": {"real": 2932.68, "planejado": 3452.0}, "km": {"real": 114961.0, "planejado": 107900.0}}, "Jequié|2025-07": {"combustivel": {"real": 280181.05, "planejado": 300137.0}, "arla": {"real": 4949.56, "planejado": 5322.0}, "km": {"real": 135102.0, "planejado": 99867.0}}, "Jequié|2025-08": {"combustivel": {"real": 277459.4, "planejado": 287967.0}, "arla": {"real": 4281.07, "planejado": 5460.0}, "km": {"real": 131148.0, "planejado": 131418.0}}, "Jequié|2025-09": {"combustivel": {"real": 224856.02, "planejado": 299566.0}, "arla": {"real": 3169.8, "planejado": 5419.0}, "km": {"real": 107031.0, "planejado": 137678.0}}, "Jequié|2025-10": {"combustivel": {"real": 264276.45, "planejado": 290841.0}, "arla": {"real": 4343.95, "planejado": 4910.0}, "km": {"real": 129805.0, "planejado": 132659.0}}, "Jequié|2025-11": {"combustivel": {"real": 244231.94, "planejado": 302341.0}, "arla": {"real": 3554.91, "planejado": 5046.0}, "km": {"real": 117464.0, "planejado": 138662.0}}, "Jequié|2025-12": {"combustivel": {"real": 252236.77, "planejado": 297525.0}, "arla": {"real": 3930.76, "planejado": 4953.0}, "km": {"real": 119519.0, "planejado": 135716.0}}, "Jequié|2026-01": {"combustivel": {"real": 293894.61, "planejado": 327233.0}, "arla": {"real": 3446.81, "planejado": 4280.0}, "km": {"real": 133781.0, "planejado": 152561.0}}, "Jequié|2026-02": {"combustivel": {"real": 236275.06, "planejado": 283356.0}, "arla": {"real": 3039.82, "planejado": 3910.0}, "km": {"real": 109619.0, "planejado": 131576.0}}, "Jequié|2026-03": {"combustivel": {"real": 388494.46, "planejado": 302002.0}, "arla": {"real": 3457.97, "planejado": 4029.0}, "km": {"real": 143145.0, "planejado": 140833.0}}, "Jequié|2026-04": {"combustivel": {"real": 425170.22, "planejado": 301042.0}, "arla": {"real": 5477.63, "planejado": 4132.0}, "km": {"real": 144941.0, "planejado": 139016.0}}, "Jequié|2026-05": {"combustivel": {"real": 332720.01, "planejado": 330074.0}, "arla": {"real": 2750.84, "planejado": 4266.0}, "km": {"real": 119003.0, "planejado": 155761.0}}, "Jequié|2026-06": {"combustivel": {"real": 375632.83, "planejado": 338867.0}, "arla": {"real": 3123.77, "planejado": 4382.0}, "km": {"real": 133194.0, "planejado": 158360.0}}, "Jequié|2026-07": {"combustivel": {"real": 399336.29, "planejado": 349024.0}, "arla": {"real": 5070.02, "planejado": 4826.0}, "km": {"real": 148035.0, "planejado": 162595.0}}, "Jequié|2026-08": {"combustivel": {"real": 340133.19, "planejado": 343473.0}, "arla": {"real": 4869.43, "planejado": 4861.0}, "km": {"real": 125548.0, "planejado": 159460.0}}, "Jequié|2026-09": {"combustivel": {"real": 211905.34, "planejado": 313157.0}, "arla": {"real": 3812.69, "planejado": 3989.0}, "km": {"real": 77263.0, "planejado": 145637.0}}, "Jequié|2026-10": {"combustivel": {"real": null, "planejado": 345483.0}, "arla": {"real": null, "planejado": 4545.0}, "km": {"real": null, "planejado": 161496.0}}, "Jequié|2026-11": {"combustivel": {"real": null, "planejado": 315639.0}, "arla": {"real": null, "planejado": 4282.0}, "km": {"real": null, "planejado": 146254.0}}, "Jequié|2026-12": {"combustivel": {"real": null, "planejado": 299977.0}, "arla": {"real": null, "planejado": 4140.0}, "km": {"real": null, "planejado": 138096.0}}, "Maranhão|2025-01": {"combustivel": {"real": 51437.16, "planejado": 44498.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 25235.0, "planejado": 23144.0}}, "Maranhão|2025-02": {"combustivel": {"real": 66109.88, "planejado": 52276.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 30561.0, "planejado": 26101.0}}, "Maranhão|2025-03": {"combustivel": {"real": 59045.25, "planejado": 30732.0}, "arla": {"real": 264.56, "planejado": 0.0}, "km": {"real": 27808.0, "planejado": 18544.0}}, "Maranhão|2025-04": {"combustivel": {"real": 38265.09, "planejado": 50202.0}, "arla": {"real": 94.71, "planejado": 0.0}, "km": {"real": 17617.0, "planejado": 24022.0}}, "Maranhão|2025-05": {"combustivel": {"real": 30960.6, "planejado": 37593.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 15204.0, "planejado": 21118.0}}, "Maranhão|2025-06": {"combustivel": {"real": 36597.04, "planejado": 45967.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 18518.0, "planejado": 24865.0}}, "Maranhão|2025-07": {"combustivel": {"real": 48350.32, "planejado": 51969.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 24978.0, "planejado": 26759.0}}, "Maranhão|2025-08": {"combustivel": {"real": 41758.51, "planejado": 44203.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 20942.0, "planejado": 22983.0}}, "Maranhão|2025-09": {"combustivel": {"real": 39122.6, "planejado": 50333.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 19340.0, "planejado": 26170.0}}, "Maranhão|2025-10": {"combustivel": {"real": 38599.4, "planejado": 58749.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 19084.0, "planejado": 30545.0}}, "Maranhão|2025-11": {"combustivel": {"real": 40664.22, "planejado": 50365.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 19775.0, "planejado": 26186.0}}, "Maranhão|2025-12": {"combustivel": {"real": 39508.04, "planejado": 52235.0}, "arla": {"real": 0.0, "planejado": 0.0}, "km": {"real": 19431.0, "planejado": 27158.0}}, "Maranhão|2026-01": {"combustivel": {"real": 28444.97, "planejado": 49014.0}, "arla": {"real": 0.0, "planejado": 731.0}, "km": {"real": 14209.0, "planejado": 25235.0}}, "Maranhão|2026-02": {"combustivel": {"real": 28524.7, "planejado": 59943.0}, "arla": {"real": 120.37, "planejado": 720.0}, "km": {"real": 14022.0, "planejado": 30561.0}}, "Maranhão|2026-03": {"combustivel": {"real": 31197.54, "planejado": 47049.0}, "arla": {"real": 0.0, "planejado": 597.0}, "km": {"real": 11775.0, "planejado": 23903.0}}, "Maranhão|2026-04": {"combustivel": {"real": 36821.37, "planejado": 28070.0}, "arla": {"real": 69.23, "planejado": 361.0}, "km": {"real": 14721.0, "planejado": 14342.0}}, "Maranhão|2026-05": {"combustivel": {"real": 51087.73, "planejado": 29769.0}, "arla": {"real": 105.0, "planejado": 226.0}, "km": {"real": 20358.0, "planejado": 15204.0}}, "Maranhão|2026-06": {"combustivel": {"real": 54963.13, "planejado": 36512.0}, "arla": {"real": 0.0, "planejado": 424.0}, "km": {"real": 21025.0, "planejado": 18518.0}}, "Maranhão|2026-07": {"combustivel": {"real": 58672.66, "planejado": 49233.0}, "arla": {"real": 313.81, "planejado": 487.0}, "km": {"real": 24361.0, "planejado": 24978.0}}, "Maranhão|2026-08": {"combustivel": {"real": 60624.32, "planejado": 41222.0}, "arla": {"real": 552.62, "planejado": 453.0}, "km": {"real": 24996.0, "planejado": 20942.0}}, "Maranhão|2026-09": {"combustivel": {"real": 41108.36, "planejado": 42926.0}, "arla": {"real": 165.64, "planejado": 677.0}, "km": {"real": 16680.0, "planejado": 21942.0}}, "Maranhão|2026-10": {"combustivel": {"real": null, "planejado": 61804.0}, "arla": {"real": null, "planejado": 769.0}, "km": {"real": null, "planejado": 31332.0}}, "Maranhão|2026-11": {"combustivel": {"real": null, "planejado": 48227.0}, "arla": {"real": null, "planejado": 516.0}, "km": {"real": null, "planejado": 24486.0}}, "Maranhão|2026-12": {"combustivel": {"real": null, "planejado": 53369.0}, "arla": {"real": null, "planejado": 638.0}, "km": {"real": null, "planejado": 27172.0}}, "Recife|2025-01": {"combustivel": {"real": 213534.59, "planejado": 207956.0}, "arla": {"real": 3176.95, "planejado": 4915.0}, "km": {"real": 84817.0, "planejado": 77160.0}}, "Recife|2025-02": {"combustivel": {"real": 192108.67, "planejado": 203832.0}, "arla": {"real": 2997.19, "planejado": 4813.0}, "km": {"real": 73964.0, "planejado": 75478.0}}, "Recife|2025-03": {"combustivel": {"real": 167473.16, "planejado": 159565.0}, "arla": {"real": 2871.48, "planejado": 3785.0}, "km": {"real": 68262.0, "planejado": 71432.0}}, "Recife|2025-04": {"combustivel": {"real": 173699.77, "planejado": 193215.0}, "arla": {"real": 2569.43, "planejado": 4511.0}, "km": {"real": 74552.0, "planejado": 68767.0}}, "Recife|2025-05": {"combustivel": {"real": 191587.76, "planejado": 211394.0}, "arla": {"real": 3279.7, "planejado": 4783.0}, "km": {"real": 82222.0, "planejado": 90079.0}}, "Recife|2025-06": {"combustivel": {"real": 187252.0, "planejado": 186027.0}, "arla": {"real": 3833.97, "planejado": 4476.0}, "km": {"real": 79113.0, "planejado": 77592.0}}, "Recife|2025-07": {"combustivel": {"real": 218680.24, "planejado": 204204.0}, "arla": {"real": 3830.82, "planejado": 4290.0}, "km": {"real": 95446.0, "planejado": 68150.0}}, "Recife|2025-08": {"combustivel": {"real": 205610.65, "planejado": 205485.0}, "arla": {"real": 4316.21, "planejado": 4223.0}, "km": {"real": 87211.0, "planejado": 84827.0}}, "Recife|2025-09": {"combustivel": {"real": 196387.01, "planejado": 227854.0}, "arla": {"real": 4226.82, "planejado": 4941.0}, "km": {"real": 83156.0, "planejado": 94606.0}}, "Recife|2025-10": {"combustivel": {"real": 189720.0, "planejado": 219328.0}, "arla": {"real": 3701.97, "planejado": 4749.0}, "km": {"real": 84349.0, "planejado": 92185.0}}, "Recife|2025-11": {"combustivel": {"real": 165799.98, "planejado": 215280.0}, "arla": {"real": 3513.63, "planejado": 4678.0}, "km": {"real": 72195.0, "planejado": 88743.0}}, "Recife|2025-12": {"combustivel": {"real": 185614.09, "planejado": 219465.0}, "arla": {"real": 4330.3, "planejado": 4795.0}, "km": {"real": 80652.0, "planejado": 91206.0}}, "Recife|2026-01": {"combustivel": {"real": 171686.41, "planejado": 201975.0}, "arla": {"real": 3486.61, "planejado": 4514.0}, "km": {"real": 76452.0, "planejado": 89066.0}}, "Recife|2026-02": {"combustivel": {"real": 147341.87, "planejado": 177752.0}, "arla": {"real": 3113.1, "planejado": 4220.0}, "km": {"real": 64327.0, "planejado": 75402.0}}, "Recife|2026-03": {"combustivel": {"real": 246722.58, "planejado": 176545.0}, "arla": {"real": 4374.61, "planejado": 4288.0}, "km": {"real": 92119.0, "planejado": 74268.0}}, "Recife|2026-04": {"combustivel": {"real": 228163.45, "planejado": 196420.0}, "arla": {"real": 4123.7, "planejado": 4676.0}, "km": {"real": 79771.0, "planejado": 82957.0}}, "Recife|2026-05": {"combustivel": {"real": 252254.37, "planejado": 213961.0}, "arla": {"real": 4743.16, "planejado": 5085.0}, "km": {"real": 89603.0, "planejado": 87822.0}}, "Recife|2026-06": {"combustivel": {"real": 241183.54, "planejado": 192086.0}, "arla": {"real": 4267.09, "planejado": 4387.0}, "km": {"real": 85979.0, "planejado": 81202.0}}, "Recife|2026-07": {"combustivel": {"real": 250809.86, "planejado": 237951.0}, "arla": {"real": 5318.55, "planejado": 5222.0}, "km": {"real": 90788.0, "planejado": 100946.0}}, "Recife|2026-08": {"combustivel": {"real": 229853.97, "planejado": 208614.0}, "arla": {"real": 4369.7, "planejado": 4612.0}, "km": {"real": 93599.0, "planejado": 87914.0}}, "Recife|2026-09": {"combustivel": {"real": 135794.58, "planejado": 185996.0}, "arla": {"real": 3043.46, "planejado": 4721.0}, "km": {"real": 56562.0, "planejado": 78018.0}}, "Recife|2026-10": {"combustivel": {"real": null, "planejado": 214412.0}, "arla": {"real": null, "planejado": 5537.0}, "km": {"real": null, "planejado": 87615.0}}, "Recife|2026-11": {"combustivel": {"real": null, "planejado": 198699.0}, "arla": {"real": null, "planejado": 4762.0}, "km": {"real": null, "planejado": 83499.0}}, "Recife|2026-12": {"combustivel": {"real": null, "planejado": 198409.0}, "arla": {"real": null, "planejado": 4517.0}, "km": {"real": null, "planejado": 83617.0}}, "Salvador|2025-01": {"combustivel": {"real": 114594.27, "planejado": 150770.0}, "arla": {"real": 1196.3, "planejado": 2032.0}, "km": {"real": 49923.0, "planejado": 70545.0}}, "Salvador|2025-02": {"combustivel": {"real": 91702.44, "planejado": 126409.0}, "arla": {"real": 1069.55, "planejado": 1465.0}, "km": {"real": 41249.0, "planejado": 60215.0}}, "Salvador|2025-03": {"combustivel": {"real": 95120.48, "planejado": 89664.0}, "arla": {"real": 855.68, "planejado": 834.0}, "km": {"real": 40645.0, "planejado": 51027.0}}, "Salvador|2025-04": {"combustivel": {"real": 85531.25, "planejado": 131469.0}, "arla": {"real": 1385.66, "planejado": 1570.0}, "km": {"real": 44470.0, "planejado": 58492.0}}, "Salvador|2025-05": {"combustivel": {"real": 116318.36, "planejado": 160631.0}, "arla": {"real": 2229.93, "planejado": 2451.0}, "km": {"real": 57882.0, "planejado": 74292.0}}, "Salvador|2025-06": {"combustivel": {"real": 123485.76, "planejado": 147501.0}, "arla": {"real": 2073.33, "planejado": 1921.0}, "km": {"real": 61894.0, "planejado": 73008.0}}, "Salvador|2025-07": {"combustivel": {"real": 124872.63, "planejado": 144874.0}, "arla": {"real": 2025.72, "planejado": 1562.0}, "km": {"real": 64042.0, "planejado": 69394.0}}, "Salvador|2025-08": {"combustivel": {"real": 98922.83, "planejado": 132489.0}, "arla": {"real": 1818.56, "planejado": 1593.0}, "km": {"real": 50253.0, "planejado": 60444.0}}, "Salvador|2025-09": {"combustivel": {"real": 85860.37, "planejado": 154413.0}, "arla": {"real": 1360.84, "planejado": 2057.0}, "km": {"real": 44149.0, "planejado": 71394.0}}, "Salvador|2025-10": {"combustivel": {"real": 99393.81, "planejado": 123925.0}, "arla": {"real": 1343.88, "planejado": 1414.0}, "km": {"real": 51826.0, "planejado": 58515.0}}, "Salvador|2025-11": {"combustivel": {"real": 112459.65, "planejado": 132289.0}, "arla": {"real": 3940.7, "planejado": 1697.0}, "km": {"real": 53220.0, "planejado": 60871.0}}, "Salvador|2025-12": {"combustivel": {"real": 98468.36, "planejado": 145057.0}, "arla": {"real": 1161.84, "planejado": 2248.0}, "km": {"real": 45517.0, "planejado": 67043.0}}, "Salvador|2026-01": {"combustivel": {"real": 91137.3, "planejado": 105938.0}, "arla": {"real": 1098.99, "planejado": 1476.0}, "km": {"real": 41776.0, "planejado": 48458.0}}, "Salvador|2026-02": {"combustivel": {"real": 94238.17, "planejado": 98149.0}, "arla": {"real": 1313.28, "planejado": 1519.0}, "km": {"real": 46949.0, "planejado": 43920.0}}, "Salvador|2026-03": {"combustivel": {"real": 129574.88, "planejado": 97295.0}, "arla": {"real": 1327.58, "planejado": 1427.0}, "km": {"real": 53916.0, "planejado": 45912.0}}, "Salvador|2026-04": {"combustivel": {"real": 148537.84, "planejado": 106282.0}, "arla": {"real": 1655.55, "planejado": 1421.0}, "km": {"real": 52691.0, "planejado": 50646.0}}, "Salvador|2026-05": {"combustivel": {"real": 132346.18, "planejado": 114534.0}, "arla": {"real": 1429.69, "planejado": 1666.0}, "km": {"real": 48952.0, "planejado": 55187.0}}, "Salvador|2026-06": {"combustivel": {"real": 130923.85, "planejado": 122308.0}, "arla": {"real": 1443.75, "planejado": 1826.0}, "km": {"real": 50993.0, "planejado": 58496.0}}, "Salvador|2026-07": {"combustivel": {"real": 137558.97, "planejado": 135385.0}, "arla": {"real": 1480.31, "planejado": 1877.0}, "km": {"real": 54980.0, "planejado": 65082.0}}, "Salvador|2026-08": {"combustivel": {"real": 128508.07, "planejado": 102628.0}, "arla": {"real": 2495.6, "planejado": 1443.0}, "km": {"real": 52965.0, "planejado": 48632.0}}, "Salvador|2026-09": {"combustivel": {"real": 64525.74, "planejado": 113119.0}, "arla": {"real": 1277.16, "planejado": 1639.0}, "km": {"real": 27942.0, "planejado": 51421.0}}, "Salvador|2026-10": {"combustivel": {"real": null, "planejado": 114357.0}, "arla": {"real": null, "planejado": 1584.0}, "km": {"real": null, "planejado": 53490.0}}, "Salvador|2026-11": {"combustivel": {"real": null, "planejado": 104818.0}, "arla": {"real": null, "planejado": 1578.0}, "km": {"real": null, "planejado": 48506.0}}, "Salvador|2026-12": {"combustivel": {"real": null, "planejado": 104495.0}, "arla": {"real": null, "planejado": 1603.0}, "km": {"real": null, "planejado": 45958.0}}, "Serra|2025-01": {"combustivel": {"real": 61242.89, "planejado": 61029.0}, "arla": {"real": 2099.22, "planejado": 2507.0}, "km": {"real": 24500.0, "planejado": 23481.0}}, "Serra|2025-02": {"combustivel": {"real": 66129.58, "planejado": 62315.0}, "arla": {"real": 1971.54, "planejado": 2548.0}, "km": {"real": 23891.0, "planejado": 23863.0}}, "Serra|2025-03": {"combustivel": {"real": 69573.59, "planejado": 52621.0}, "arla": {"real": 1768.75, "planejado": 2150.0}, "km": {"real": 25467.0, "planejado": 24325.0}}, "Serra|2025-04": {"combustivel": {"real": 58832.83, "planejado": 64305.0}, "arla": {"real": 2203.75, "planejado": 2634.0}, "km": {"real": 23990.0, "planejado": 23640.0}}, "Serra|2025-05": {"combustivel": {"real": 69941.77, "planejado": 54121.0}, "arla": {"real": 2398.29, "planejado": 2222.0}, "km": {"real": 25873.0, "planejado": 23411.0}}, "Serra|2025-06": {"combustivel": {"real": 64626.65, "planejado": 59206.0}, "arla": {"real": 2155.25, "planejado": 2418.0}, "km": {"real": 25120.0, "planejado": 24533.0}}, "Serra|2025-07": {"combustivel": {"real": 73794.48, "planejado": 65368.0}, "arla": {"real": 2419.37, "planejado": 2671.0}, "km": {"real": 29021.0, "planejado": 25785.0}}, "Serra|2025-08": {"combustivel": {"real": 65315.82, "planejado": 57513.0}, "arla": {"real": 2496.43, "planejado": 2350.0}, "km": {"real": 25378.0, "planejado": 22916.0}}, "Serra|2025-09": {"combustivel": {"real": 70319.61, "planejado": 55229.0}, "arla": {"real": 2609.9, "planejado": 2248.0}, "km": {"real": 27280.0, "planejado": 21918.0}}, "Serra|2025-10": {"combustivel": {"real": 74100.52, "planejado": 57081.0}, "arla": {"real": 2972.63, "planejado": 2332.0}, "km": {"real": 28688.0, "planejado": 22729.0}}, "Serra|2025-11": {"combustivel": {"real": 66121.51, "planejado": 55626.0}, "arla": {"real": 2527.58, "planejado": 2272.0}, "km": {"real": 26937.0, "planejado": 22151.0}}, "Serra|2025-12": {"combustivel": {"real": 69535.96, "planejado": 58541.0}, "arla": {"real": 2350.56, "planejado": 2389.0}, "km": {"real": 27516.0, "planejado": 23291.0}}, "Serra|2026-01": {"combustivel": {"real": 67478.36, "planejado": 58905.0}, "arla": {"real": 2343.75, "planejado": 2014.0}, "km": {"real": 26518.0, "planejado": 23207.0}}, "Serra|2026-02": {"combustivel": {"real": 60646.94, "planejado": 57964.0}, "arla": {"real": 2061.17, "planejado": 1989.0}, "km": {"real": 24154.0, "planejado": 22773.0}}, "Serra|2026-03": {"combustivel": {"real": 88054.02, "planejado": 64718.0}, "arla": {"real": 3453.25, "planejado": 2217.0}, "km": {"real": 30405.0, "planejado": 25511.0}}, "Serra|2026-04": {"combustivel": {"real": 76324.46, "planejado": 63841.0}, "arla": {"real": 2484.2, "planejado": 2217.0}, "km": {"real": 25674.0, "planejado": 25126.0}}, "Serra|2026-05": {"combustivel": {"real": 66178.32, "planejado": 60381.0}, "arla": {"real": 2097.0, "planejado": 2066.0}, "km": {"real": 22545.0, "planejado": 23761.0}}, "Serra|2026-06": {"combustivel": {"real": 72596.86, "planejado": 58974.0}, "arla": {"real": 2538.01, "planejado": 2020.0}, "km": {"real": 25879.0, "planejado": 23342.0}}, "Serra|2026-07": {"combustivel": {"real": 87641.4, "planejado": 75443.0}, "arla": {"real": 2603.31, "planejado": 2566.0}, "km": {"real": 30407.0, "planejado": 29616.0}}, "Serra|2026-08": {"combustivel": {"real": 71001.61, "planejado": 68087.0}, "arla": {"real": 2288.3, "planejado": 2326.0}, "km": {"real": 26912.0, "planejado": 26824.0}}, "Serra|2026-09": {"combustivel": {"real": 42552.68, "planejado": 63295.0}, "arla": {"real": 1288.63, "planejado": 2193.0}, "km": {"real": 13860.0, "planejado": 24898.0}}, "Serra|2026-10": {"combustivel": {"real": null, "planejado": 64473.0}, "arla": {"real": null, "planejado": 2182.0}, "km": {"real": null, "planejado": 25392.0}}, "Serra|2026-11": {"combustivel": {"real": null, "planejado": 58514.0}, "arla": {"real": null, "planejado": 1985.0}, "km": {"real": null, "planejado": 22997.0}}, "Serra|2026-12": {"combustivel": {"real": null, "planejado": 62098.0}, "arla": {"real": null, "planejado": 2132.0}, "km": {"real": null, "planejado": 24460.0}}, "Teixeira|2025-01": {"combustivel": {"real": 60130.56, "planejado": 64284.0}, "arla": {"real": 1594.27, "planejado": 1261.0}, "km": {"real": 20208.0, "planejado": 21445.0}}, "Teixeira|2025-02": {"combustivel": {"real": 52604.48, "planejado": 55580.0}, "arla": {"real": 1248.88, "planejado": 1209.0}, "km": {"real": 17689.0, "planejado": 17660.0}}, "Teixeira|2025-03": {"combustivel": {"real": 62263.23, "planejado": 48195.0}, "arla": {"real": 1148.26, "planejado": 1026.0}, "km": {"real": 20658.0, "planejado": 18881.0}}, "Teixeira|2025-04": {"combustivel": {"real": 55313.86, "planejado": 49017.0}, "arla": {"real": 738.92, "planejado": 860.0}, "km": {"real": 19073.0, "planejado": 16518.0}}, "Teixeira|2025-05": {"combustivel": {"real": 57953.12, "planejado": 57583.0}, "arla": {"real": 1618.44, "planejado": 1072.0}, "km": {"real": 19822.0, "planejado": 22058.0}}, "Teixeira|2025-06": {"combustivel": {"real": 52269.51, "planejado": 62984.0}, "arla": {"real": 1273.45, "planejado": 1284.0}, "km": {"real": 18612.0, "planejado": 22280.0}}, "Teixeira|2025-07": {"combustivel": {"real": 56725.31, "planejado": 70706.0}, "arla": {"real": 1397.59, "planejado": 1474.0}, "km": {"real": 19952.0, "planejado": 23611.0}}, "Teixeira|2025-08": {"combustivel": {"real": 60161.15, "planejado": 71384.0}, "arla": {"real": 970.08, "planejado": 1480.0}, "km": {"real": 21484.0, "planejado": 24214.0}}, "Teixeira|2025-09": {"combustivel": {"real": 62075.91, "planejado": 59966.0}, "arla": {"real": 873.89, "planejado": 1208.0}, "km": {"real": 21231.0, "planejado": 20592.0}}, "Teixeira|2025-10": {"combustivel": {"real": 71717.25, "planejado": 59966.0}, "arla": {"real": 1432.49, "planejado": 1208.0}, "km": {"real": 23930.0, "planejado": 20592.0}}, "Teixeira|2025-11": {"combustivel": {"real": 68369.62, "planejado": 59966.0}, "arla": {"real": 1246.06, "planejado": 1208.0}, "km": {"real": 23356.0, "planejado": 20592.0}}, "Teixeira|2025-12": {"combustivel": {"real": 64564.81, "planejado": 59966.0}, "arla": {"real": 883.48, "planejado": 1208.0}, "km": {"real": 22518.0, "planejado": 20592.0}}, "Teixeira|2026-01": {"combustivel": {"real": 51079.03, "planejado": 58363.0}, "arla": {"real": 1286.73, "planejado": 1018.0}, "km": {"real": 18567.0, "planejado": 20170.0}}, "Teixeira|2026-02": {"combustivel": {"real": 50868.42, "planejado": 51270.0}, "arla": {"real": 1178.47, "planejado": 869.0}, "km": {"real": 17094.0, "planejado": 18082.0}}, "Teixeira|2026-03": {"combustivel": {"real": 84636.78, "planejado": 55441.0}, "arla": {"real": 1686.01, "planejado": 899.0}, "km": {"real": 22109.0, "planejado": 19679.0}}, "Teixeira|2026-04": {"combustivel": {"real": 84375.52, "planejado": 54079.0}, "arla": {"real": 1504.08, "planejado": 871.0}, "km": {"real": 20995.0, "planejado": 19494.0}}, "Teixeira|2026-05": {"combustivel": {"real": 90828.74, "planejado": 54140.0}, "arla": {"real": 1774.33, "planejado": 940.0}, "km": {"real": 25304.0, "planejado": 18832.0}}, "Teixeira|2026-06": {"combustivel": {"real": 76069.2, "planejado": 51906.0}, "arla": {"real": 1442.87, "planejado": 875.0}, "km": {"real": 22633.0, "planejado": 18612.0}}, "Teixeira|2026-07": {"combustivel": {"real": 101304.48, "planejado": 57336.0}, "arla": {"real": 1986.99, "planejado": 1016.0}, "km": {"real": 31520.0, "planejado": 19952.0}}, "Teixeira|2026-08": {"combustivel": {"real": 86399.1, "planejado": 54209.0}, "arla": {"real": 1765.64, "planejado": 898.0}, "km": {"real": 27778.0, "planejado": 18781.0}}, "Teixeira|2026-09": {"combustivel": {"real": 71001.41, "planejado": 59336.0}, "arla": {"real": 1600.57, "planejado": 1042.0}, "km": {"real": 22231.0, "planejado": 20477.0}}, "Teixeira|2026-10": {"combustivel": {"real": null, "planejado": 64986.0}, "arla": {"real": null, "planejado": 1128.0}, "km": {"real": null, "planejado": 22172.0}}, "Teixeira|2026-11": {"combustivel": {"real": null, "planejado": 66046.0}, "arla": {"real": null, "planejado": 1171.0}, "km": {"real": null, "planejado": 22108.0}}, "Teixeira|2026-12": {"combustivel": {"real": null, "planejado": 50790.0}, "arla": {"real": null, "planejado": 827.0}, "km": {"real": null, "planejado": 18028.0}}, "Valadares|2025-01": {"combustivel": {"real": 89052.42, "planejado": 78932.0}, "arla": {"real": 1798.72, "planejado": 1614.0}, "km": {"real": 28472.0, "planejado": 25822.0}}, "Valadares|2025-02": {"combustivel": {"real": 66246.05, "planejado": 78014.0}, "arla": {"real": 1368.92, "planejado": 1587.0}, "km": {"real": 21205.0, "planejado": 25411.0}}, "Valadares|2025-03": {"combustivel": {"real": 80731.06, "planejado": 77640.0}, "arla": {"real": 1816.7, "planejado": 1580.0}, "km": {"real": 26635.0, "planejado": 30568.0}}, "Valadares|2025-04": {"combustivel": {"real": 76276.73, "planejado": 86294.0}, "arla": {"real": 1572.21, "planejado": 1756.0}, "km": {"real": 24543.0, "planejado": 26942.0}}, "Valadares|2025-05": {"combustivel": {"real": 81317.14, "planejado": 87239.0}, "arla": {"real": 1984.85, "planejado": 1781.0}, "km": {"real": 27952.0, "planejado": 32058.0}}, "Valadares|2025-06": {"combustivel": {"real": 74923.95, "planejado": 81345.0}, "arla": {"real": 2033.25, "planejado": 1666.0}, "km": {"real": 25476.0, "planejado": 28884.0}}, "Valadares|2025-07": {"combustivel": {"real": 81962.04, "planejado": 80371.0}, "arla": {"real": 2118.22, "planejado": 1662.0}, "km": {"real": 27840.0, "planejado": 27433.0}}, "Valadares|2025-08": {"combustivel": {"real": 75370.49, "planejado": 74824.0}, "arla": {"real": 1706.43, "planejado": 1526.0}, "km": {"real": 25315.0, "planejado": 25439.0}}, "Valadares|2025-09": {"combustivel": {"real": 80495.79, "planejado": 75053.0}, "arla": {"real": 2200.13, "planejado": 1529.0}, "km": {"real": 26183.0, "planejado": 25486.0}}, "Valadares|2025-10": {"combustivel": {"real": 67062.1, "planejado": 69416.0}, "arla": {"real": 1898.06, "planejado": 1406.0}, "km": {"real": 21837.0, "planejado": 23432.0}}, "Valadares|2025-11": {"combustivel": {"real": 73032.08, "planejado": 80785.0}, "arla": {"real": 1951.08, "planejado": 1643.0}, "km": {"real": 24392.0, "planejado": 27376.0}}, "Valadares|2025-12": {"combustivel": {"real": 67789.18, "planejado": 64648.0}, "arla": {"real": 1803.07, "planejado": 1330.0}, "km": {"real": 22174.0, "planejado": 22161.0}}, "Valadares|2026-01": {"combustivel": {"real": 70690.62, "planejado": 68464.0}, "arla": {"real": 1580.9, "planejado": 1360.0}, "km": {"real": 23588.0, "planejado": 23033.0}}, "Valadares|2026-02": {"combustivel": {"real": 48092.95, "planejado": 59207.0}, "arla": {"real": 1210.01, "planejado": 1160.0}, "km": {"real": 16357.0, "planejado": 19846.0}}, "Valadares|2026-03": {"combustivel": {"real": 81802.74, "planejado": 68430.0}, "arla": {"real": 2049.19, "planejado": 1353.0}, "km": {"real": 25146.0, "planejado": 22997.0}}, "Valadares|2026-04": {"combustivel": {"real": 99239.94, "planejado": 67965.0}, "arla": {"real": 2721.1, "planejado": 1338.0}, "km": {"real": 23140.0, "planejado": 22824.0}}, "Valadares|2026-05": {"combustivel": {"real": 94755.5, "planejado": 76778.0}, "arla": {"real": 2233.93, "planejado": 1510.0}, "km": {"real": 25349.0, "planejado": 25758.0}}, "Valadares|2026-06": {"combustivel": {"real": 85759.79, "planejado": 76067.0}, "arla": {"real": 1719.09, "planejado": 1497.0}, "km": {"real": 25520.0, "planejado": 25474.0}}, "Valadares|2026-07": {"combustivel": {"real": 90220.24, "planejado": 81385.0}, "arla": {"real": 2515.76, "planejado": 1610.0}, "km": {"real": 29253.0, "planejado": 27422.0}}, "Valadares|2026-08": {"combustivel": {"real": 94447.08, "planejado": 76136.0}, "arla": {"real": 3458.11, "planejado": 1506.0}, "km": {"real": 26449.0, "planejado": 25616.0}}, "Valadares|2026-09": {"combustivel": {"real": 79219.54, "planejado": 79217.0}, "arla": {"real": 2404.59, "planejado": 1558.0}, "km": {"real": 31169.0, "planejado": 26636.0}}, "Valadares|2026-10": {"combustivel": {"real": null, "planejado": 71919.0}, "arla": {"real": null, "planejado": 1420.0}, "km": {"real": null, "planejado": 24149.0}}, "Valadares|2026-11": {"combustivel": {"real": null, "planejado": 67658.0}, "arla": {"real": null, "planejado": 1333.0}, "km": {"real": null, "planejado": 22715.0}}, "Valadares|2026-12": {"combustivel": {"real": null, "planejado": 72599.0}, "arla": {"real": null, "planejado": 1434.0}, "km": {"real": null, "planejado": 24502.0}}}}</script>
+<script>
+(function(){
+  "use strict";
+  const RAW = JSON.parse(document.getElementById('dashdata').textContent);
+  const UNIDADES = RAW.unidades;
+  const MESES = RAW.meses; // 'YYYY-MM' ascending
+  const SERIES = RAW.series;
+  const MES_PARCIAL = RAW.mes_parcial;
+
+  const MESES_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  function fmtMes(ym){ const [y,m] = ym.split('-'); return MESES_PT[parseInt(m,10)-1] + '/' + y.slice(2); }
+
+  document.getElementById('metaDataCorte').textContent = RAW.dados_reais_ate;
+  document.getElementById('metaGerado').textContent = RAW.gerado_em;
+  document.getElementById('metaParcial').textContent = 'mês ' + fmtMes(MES_PARCIAL) + ' parcial';
+
+  const fmtBRL = (v) => v==null ? '—' : v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+  const fmtNum = (v) => v==null ? '—' : Math.round(v).toLocaleString('pt-BR');
+  const fmtPct = (v) => v==null ? '—' : (v>0?'+':'') + v.toLocaleString('pt-BR',{maximumFractionDigits:1}) + '%';
+
+  // ---------------- ritmo esperado no mês parcial ----------------
+  // O "Planejado" de cada mês é o valor fixo do mês inteiro (vem direto do
+  // orçamento) — não é dividido por dia. Pra saber se o mês parcial está no
+  // ritmo de bater a meta, calculamos um checkpoint: quanto do planejado
+  // já deveria ter sido consumido até a data de corte, proporcional aos dias
+  // corridos do mês. Isso não substitui o Planejado nem o Real — é só uma
+  // marca de referência (dia N do mês).
+  let PARCIAL_DIAS_DECORRIDOS = null, PARCIAL_DIAS_NO_MES = null, PARCIAL_FRACAO = null;
+  {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(RAW.dados_reais_ate || '');
+    const [py, pm] = (MES_PARCIAL || '').split('-').map(Number);
+    if(m && py && pm){
+      PARCIAL_DIAS_DECORRIDOS = parseInt(m[1], 10);
+      PARCIAL_DIAS_NO_MES = new Date(py, pm, 0).getDate();
+      PARCIAL_FRACAO = PARCIAL_DIAS_DECORRIDOS / PARCIAL_DIAS_NO_MES;
+    }
+  }
+
+  // ---------------- state ----------------
+  const state = {
+    unidades: new Set(UNIDADES),          // selected filiais (all por padrão)
+    period: '12m',                        // preset de período (define o universo de meses clicáveis)
+    months: null,                         // null = usa o universo inteiro do preset; Set = meses escolhidos a dedo
+    compareYoY: false,                    // comparar com o mesmo período de 2025
+  };
+
+  // Dado um conjunto de meses (ex: os do período/preset atual), devolve os
+  // meses equivalentes um ano antes (2026-03 -> 2025-03), só os que existem
+  // na base. Usado pro comparativo "vs 2025" nos KPIs.
+  function priorYearMonths(months){
+    return months
+      .map(m => { const [y,mm] = m.split('-'); return (parseInt(y,10)-1)+'-'+mm; })
+      .filter(m => MESES.includes(m));
+  }
+
+  // Universo de meses do preset atual (3M/6M/12M/Ano/Tudo) — é o que aparece
+  // no eixo do gráfico de evolução mensal, pra sempre dar pra clicar em
+  // qualquer mês do período, mesmo com uma seleção manual já ativa.
+  function presetMonths(){
+    const idxEnd = MESES.indexOf(MES_PARCIAL);
+    const end = idxEnd === -1 ? MESES.length - 1 : idxEnd;
+    let start;
+    if(state.period === '3m') start = Math.max(0, end-2);
+    else if(state.period === '6m') start = Math.max(0, end-5);
+    else if(state.period === '12m') start = Math.max(0, end-11);
+    else if(state.period === '2025') return MESES.filter(m=>m.startsWith('2025'));
+    else if(state.period === '2026') return MESES.filter(m=>m.startsWith('2026'));
+    else return MESES.slice(); // tudo
+    return MESES.slice(start, end+1);
+  }
+
+  // Meses que de fato entram nos KPIs/gráficos/tabela: o universo do preset,
+  // recortado pela seleção manual de meses (clique no gráfico), se houver.
+  //
+  // No modo "Comparar com 2025", ignoramos preset/seleção manual e travamos
+  // em ano-corrente-até-a-data-de-corte (ex: jan a set/26). É a única forma
+  // de a comparação "mesmo período" ser honesta: mesmo número de meses dos
+  // dois lados. Um preset como "12M" (que cruza out/25–set/26) compararia
+  // 12 meses de 2026 contra só 9 de 2025 (out/nov/dez de 2024 não existem
+  // na base) — dava um "+80%" mentiroso.
+  function periodMonths(){
+    if(state.compareYoY){
+      return MESES.filter(m => m.startsWith('2026') && m <= MES_PARCIAL);
+    }
+    const universe = presetMonths();
+    if(!state.months) return universe;
+    return universe.filter(m => state.months.has(m));
+  }
+
+  // Clique normal num mês = mostra só ele (dentro do preset atual).
+  // Ctrl/Cmd+clique = soma/tira esse mês da seleção atual.
+  // Se a seleção ficar vazia, volta a considerar todo o universo do preset.
+  function selectMes(m, additive){
+    const universe = presetMonths();
+    if(additive){
+      const set = state.months ? new Set(state.months) : new Set(universe);
+      if(set.has(m)) set.delete(m); else set.add(m);
+      state.months = set.size===0 ? null : set;
+    } else {
+      state.months = (state.months && state.months.size===1 && state.months.has(m)) ? null : new Set([m]);
+    }
+    render();
+  }
+
+  // ---------------- filters UI ----------------
+  const filialRow = document.getElementById('filialRow');
+  UNIDADES.forEach(u=>{
+    const b = document.createElement('button');
+    b.className='chip active'; b.textContent=u; b.dataset.unidade=u;
+    b.title='Clique: só esta filial · Ctrl/Cmd+clique: soma à seleção';
+    b.addEventListener('click', (ev)=>selectUnidade(u, ev.ctrlKey || ev.metaKey));
+    filialRow.appendChild(b);
+  });
+  document.getElementById('chipTodas').addEventListener('click', ()=>{
+    state.unidades = new Set(UNIDADES); render();
+  });
+
+  const PRESETS = [['3m','3M'],['6m','6M'],['12m','12M'],['2025','Ano 2025'],['2026','Ano 2026'],['tudo','Tudo']];
+  const periodRow = document.getElementById('periodRow');
+  PRESETS.forEach(([key,label])=>{
+    const b = document.createElement('button');
+    b.className='preset'+(key===state.period?' active':''); b.textContent=label; b.dataset.period=key;
+    b.addEventListener('click', ()=>{ state.period=key; state.months=null; render(); });
+    periodRow.appendChild(b);
+  });
+
+  document.getElementById('yoyToggle').addEventListener('change', (ev)=>{
+    state.compareYoY = ev.target.checked;
+    render();
+  });
+
+  // Clique normal = seleciona só essa unidade (substitui a seleção).
+  // Clique com Ctrl/Cmd = soma/tira essa unidade da seleção atual.
+  // Se a seleção ficar vazia (ex.: tirou a única selecionada), volta pra "todas".
+  function selectUnidade(u, additive){
+    if(additive){
+      if(state.unidades.has(u)) state.unidades.delete(u);
+      else state.unidades.add(u);
+      if(state.unidades.size===0) state.unidades = new Set(UNIDADES);
+    } else {
+      if(state.unidades.size===1 && state.unidades.has(u)) state.unidades = new Set(UNIDADES);
+      else state.unidades = new Set([u]);
+    }
+    render();
+  }
+
+  // ---------------- aggregation ----------------
+  function get(u, ym, cat){
+    const e = SERIES[u+'|'+ym];
+    return e ? e[cat] : {real:null, planejado:null};
+  }
+  function sumField(units, months, cat, field){
+    let total=null;
+    for(const u of units) for(const m of months){
+      const v = get(u,m,cat)[field];
+      if(v!=null){ total = (total||0) + v; }
+    }
+    return total;
+  }
+  function trendSeries(units, months, cat){
+    return months.map(m=>({
+      real: sumField(units,[m],cat,'real'),
+      planejado: sumField(units,[m],cat,'planejado')
+    }));
+  }
+  function byUnidSeries(months, cat){
+    return UNIDADES.map(u=>({
+      unidade:u,
+      real: sumField([u],months,cat,'real'),
+      planejado: sumField([u],months,cat,'planejado')
+    }));
+  }
+  function variance(real,plan){ if(real==null||plan==null||plan===0) return null; return (real-plan)/plan*100; }
+
+  // ---------------- charts ----------------
+  const palette = getComputedStyle(document.documentElement);
+  function cvar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  const charts = {};
+  function ensureChart(id, cfg){
+    if(charts[id]){ charts[id].destroy(); }
+    charts[id] = new Chart(document.getElementById(id).getContext('2d'), cfg);
+    return charts[id];
+  }
+
+  function baseGridOptions(){
+    return {
+      responsive:true, maintainAspectRatio:false,
+      layout:{ padding:{ left:6, right:12, top:6, bottom:2 } },
+      interaction:{mode:'index', intersect:false},
+      plugins:{ legend:{display:false}, tooltip:{
+        backgroundColor: cvar('--surface'), titleColor: cvar('--text'), bodyColor: cvar('--text'),
+        borderColor: cvar('--border'), borderWidth:1, padding:10, titleFont:{family:'IBM Plex Sans', weight:'600'}, bodyFont:{family:'IBM Plex Mono'}
+      }},
+      scales:{
+        x:{ grid:{display:false}, ticks:{color:cvar('--text-muted'), font:{family:'IBM Plex Sans', size:11}, autoSkipPadding:14, maxRotation:0 } },
+        y:{ grid:{color:cvar('--border')}, ticks:{color:cvar('--text-muted'), font:{family:'IBM Plex Mono', size:10.5}, padding:4 } }
+      }
+    };
+  }
+
+  function withAlpha(hex, aa){ return (hex && hex.length===7) ? hex+aa : hex; }
+
+  // Modo "Comparar com 2025": em vez da evolução do período filtrado, mostra
+  // os 12 meses do calendário (jan a dez) com uma barra do real de 2025 ao
+  // lado da barra do real de 2026 — dá pra ver a sazonalidade lado a lado.
+  // Meses de 2026 ainda não lançados simplesmente não desenham barra.
+  function renderYoYChart(id, cat, isMoney){
+    const units = state.unidades;
+    const labels = MESES_PT.slice();
+    const real2025 = MESES_PT.map((_,i)=> sumField(units, ['2025-'+String(i+1).padStart(2,'0')], cat, 'real'));
+    const real2026 = MESES_PT.map((_,i)=> sumField(units, ['2026-'+String(i+1).padStart(2,'0')], cat, 'real'));
+    const plan2025 = MESES_PT.map((_,i)=> sumField(units, ['2025-'+String(i+1).padStart(2,'0')], cat, 'planejado'));
+    const plan2026 = MESES_PT.map((_,i)=> sumField(units, ['2026-'+String(i+1).padStart(2,'0')], cat, 'planejado'));
+    const fmt = isMoney ? fmtBRL : fmtNum;
+    const opts = baseGridOptions();
+    opts.scales.x.ticks.autoSkip = false;
+    opts.scales.y.ticks.callback = v => isMoney ? ('R$ '+(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:0})+'k') : v.toLocaleString('pt-BR');
+    opts.scales.y.afterFit = (scale) => { scale.width = Math.max(scale.width, 66); };
+    opts.plugins.tooltip.callbacks = { label: (ctx) => `${ctx.dataset.label}: ${fmt(ctx.raw)}` };
+
+    ensureChart(id, {
+      type:'bar',
+      data:{ labels, datasets:[
+        { type:'bar', label:'Real 2025', data:real2025, backgroundColor:cvar('--prior'), borderRadius:3, barPercentage:.72, categoryPercentage:.82, order:2 },
+        { type:'bar', label:'Real 2026', data:real2026, backgroundColor:cvar('--accent'), borderRadius:3, barPercentage:.72, categoryPercentage:.82, order:2 },
+        { type:'line', label:'Orçado 2025', data:plan2025, borderColor:cvar('--prior'), backgroundColor:cvar('--prior'), borderDash:[5,4], borderWidth:2, pointRadius:2, pointHoverRadius:4, spanGaps:true, tension:.25, order:1 },
+        { type:'line', label:'Orçado 2026', data:plan2026, borderColor:cvar('--line'), backgroundColor:cvar('--line'), borderDash:[5,4], borderWidth:2, pointRadius:2, pointHoverRadius:4, spanGaps:true, tension:.25, order:0 }
+      ]},
+      options: opts
+    });
+
+    const captionEl = document.getElementById('caption-'+cat+'-trend');
+    if(captionEl){
+      captionEl.style.display = 'flex';
+      captionEl.innerHTML =
+        `<span><span class="sw" style="background:${cvar('--prior')}"></span>Real 2025</span>`+
+        `<span><span class="sw" style="background:${cvar('--accent')}"></span>Real 2026</span>`+
+        `<span><span class="sw" style="background:${cvar('--prior')}; border-radius:0; height:2px;"></span>Orçado 2025</span>`+
+        `<span><span class="sw" style="background:${cvar('--line')}; border-radius:0; height:2px;"></span>Orçado 2026</span>`;
+    }
+  }
+
+  function renderTrendChart(id, cat, isMoney, direction){
+    if(state.compareYoY) return renderYoYChart(id, cat, isMoney);
+    // Sempre desenha o universo inteiro do preset (não só os meses já
+    // filtrados), pra dar pra clicar em qualquer mês do período — os meses
+    // fora da seleção manual atual só ficam com a barra apagada (cinza).
+    const months = presetMonths();
+    const data = trendSeries(state.unidades, months, cat);
+    const labels = months.map(fmtMes);
+    const opts = baseGridOptions();
+    // Com 12+ meses o autoSkip do Chart.js esconde rótulo sim (mostra só um
+    // mês a cada dois), o que confunde em qual barra clicar. Força mostrar
+    // todos — pra caber, o "Tudo" (24 meses) usa fonte um pouco menor.
+    opts.scales.x.ticks.autoSkip = false;
+    opts.scales.x.ticks.font = {family:'IBM Plex Sans', size: months.length>15 ? 9.5 : 11};
+    // baseGridOptions trava maxRotation em 0 (bom pros gráficos "por filial",
+    // que não têm esse problema). Aqui, com autoSkip desligado, precisamos
+    // deixar o Chart.js girar o rótulo quando o espaço aperta (containers
+    // estreitos, ex. painel "Combustível" ocupando 1.4fr numa tela de 900px)
+    // — ele só gira se realmente não couber na horizontal.
+    opts.scales.x.ticks.maxRotation = 60;
+    opts.scales.x.ticks.minRotation = 0;
+    opts.scales.y.ticks.callback = v => isMoney ? ('R$ '+(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:0})+'k') : v.toLocaleString('pt-BR');
+    // Em containers estreitos o Chart.js às vezes subestima a largura do eixo Y
+    // e o prefixo "R$" some (fica só o número). Forçamos uma largura mínima.
+    opts.scales.y.afterFit = (scale) => { scale.width = Math.max(scale.width, 66); };
+    opts.plugins.tooltip.callbacks = { label: (ctx)=>{
+      const v = ctx.raw;
+      const fmt = isMoney ? fmtBRL : fmtNum;
+      const parcial = months[ctx.dataIndex]===MES_PARCIAL ? ' (mês parcial)' : '';
+      return ctx.dataset.label + ': ' + (v==null? 'sem dados' : fmt(v)+parcial);
+    }};
+    const accentSolid = cvar('--accent'), accentFaded = withAlpha(accentSolid,'70');
+    const activeMonths = state.months || new Set(months);
+    const barColors = months.map(m => {
+      if(!activeMonths.has(m)) return cvar('--neutral-chip');
+      return m===MES_PARCIAL ? accentFaded : accentSolid;
+    });
+    opts.onClick = (evt, els, chart) => {
+      const pts = chart.getElementsAtEventForMode(evt, 'index', {intersect:false, axis:'x'}, true);
+      if(pts.length){
+        const idx = pts[0].index;
+        const native = evt.native || evt;
+        const additive = !!(native && (native.ctrlKey || native.metaKey));
+        selectMes(months[idx], additive);
+      }
+    };
+
+    // Checkpoint "ritmo esperado": só existe pro mês parcial, e é o planejado
+    // daquele mês multiplicado pela fração de dias já corridos.
+    const checkpointData = months.map((m,i) => {
+      if(m !== MES_PARCIAL || PARCIAL_FRACAO==null) return null;
+      const plan = data[i].planejado;
+      return plan!=null ? plan * PARCIAL_FRACAO : null;
+    });
+    const temCheckpoint = checkpointData.some(v=>v!=null);
+
+    opts.plugins.tooltip.callbacks.label = (ctx)=>{
+      if(ctx.dataset._isCheckpoint){
+        const v = ctx.raw;
+        const fmt = isMoney ? fmtBRL : fmtNum;
+        return v==null ? null : `Ritmo esperado (dia ${PARCIAL_DIAS_DECORRIDOS}/${PARCIAL_DIAS_NO_MES}): ${fmt(v)}`;
+      }
+      const v = ctx.raw;
+      const fmt = isMoney ? fmtBRL : fmtNum;
+      const parcial = months[ctx.dataIndex]===MES_PARCIAL ? ' (mês parcial)' : '';
+      return ctx.dataset.label + ': ' + (v==null? 'sem dados' : fmt(v)+parcial);
+    };
+
+    const datasets = [
+      { type:'bar', label:'Real', data:data.map(d=>d.real), backgroundColor:barColors, borderRadius:3, maxBarThickness:26, order:2 },
+      { type:'line', label:'Orçado', data:data.map(d=>d.planejado), borderColor:cvar('--line'), backgroundColor:cvar('--line'), pointRadius:3, pointHoverRadius:5, borderWidth:2.5, tension:.3, spanGaps:true, order:1 }
+    ];
+    if(temCheckpoint){
+      datasets.push({
+        type:'line', label:'Ritmo esperado', data:checkpointData, _isCheckpoint:true,
+        showLine:false, spanGaps:false,
+        pointStyle:'dash', pointRadius:11, pointHoverRadius:13,
+        pointBorderColor:cvar('--pace'), pointBorderWidth:3, pointBackgroundColor:'transparent',
+        order:0
+      });
+    }
+
+    const captionEl = document.getElementById('caption-'+cat+'-trend');
+    if(captionEl){
+      captionEl.style.display = 'block';
+      captionEl.style.lineHeight = '1.5';
+      if(temCheckpoint){
+        const parcialIdx = months.indexOf(MES_PARCIAL);
+        const realParcial = data[parcialIdx].real;
+        const checkpointVal = checkpointData[parcialIdx];
+        const fmt = isMoney ? fmtBRL : fmtNum;
+        let msg = `<span class="sw" style="background:var(--pace); border-radius:50%"></span>`+
+          `Ritmo esperado até dia ${PARCIAL_DIAS_DECORRIDOS}: <b class="num">${fmt(checkpointVal)}</b> `+
+          `(orçado × ${PARCIAL_DIAS_DECORRIDOS}/${PARCIAL_DIAS_NO_MES} dias do mês).`;
+        if(realParcial!=null && checkpointVal!=null){
+          const diff = realParcial - checkpointVal;
+          const aheadOfPace = diff > 0; // real já rodou mais que o checkpoint
+          // 'cost': ficar À FRENTE do ritmo (gastando mais rápido) é ruim.
+          // 'volume': ficar ATRÁS do ritmo (rodando menos) é ruim.
+          const bad = direction==='volume' ? !aheadOfPace : aheadOfPace;
+          const cor = bad ? 'var(--bad)' : 'var(--good)';
+          const verbo = aheadOfPace ? 'acima' : 'abaixo';
+          msg += ` Real atual está <b style="color:${cor}">${verbo} do ritmo</b> em ${fmt(Math.abs(diff))}.`;
+        }
+        captionEl.innerHTML = msg;
+      } else {
+        captionEl.innerHTML = '';
+      }
+    }
+
+    ensureChart(id, {
+      type:'bar',
+      data:{ labels, datasets },
+      options: opts
+    });
+  }
+
+  function renderUnidChart(id, cat, isMoney){
+    const months = periodMonths();
+    const data = byUnidSeries(months, cat);
+    const opts = baseGridOptions();
+    opts.indexAxis='y';
+    // O modo de interação padrão ('index') detecta a barra pela posição no eixo
+    // errado em gráfico horizontal — sem isso, hover/tooltip pega a barra vizinha.
+    opts.interaction = {mode:'index', intersect:false, axis:'y'};
+    opts.scales.x.ticks.callback = v => isMoney ? ('R$ '+(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:0})+'k') : v.toLocaleString('pt-BR');
+    opts.scales.x.ticks.maxTicksLimit = 6;
+    opts.scales.y.grid.display=false;
+    opts.scales.y.ticks.autoSkip=false;
+    opts.scales.y.ticks.font={family:'IBM Plex Sans', size:11.5};
+    opts.plugins.tooltip.callbacks = { label:(ctx)=>{
+      const v = ctx.raw; const fmt = isMoney?fmtBRL:fmtNum;
+      return ctx.dataset.label + ': ' + (v==null?'sem dados':fmt(v));
+    }};
+    opts.onClick = (evt, els, chart) => {
+      const pts = chart.getElementsAtEventForMode(evt, 'index', {intersect:false, axis:'y'}, true);
+      if(pts.length){
+        const idx = pts[0].index;
+        const native = evt.native || evt;
+        const additive = !!(native && (native.ctrlKey || native.metaKey));
+        selectUnidade(chart.data.labels[idx], additive);
+      }
+    };
+    const bg = UNIDADES.map(u => state.unidades.has(u) ? cvar('--accent') : cvar('--neutral-chip'));
+    const bgLine = UNIDADES.map(u => state.unidades.has(u) ? cvar('--line') : cvar('--neutral-chip'));
+    ensureChart(id, {
+      type:'bar',
+      data:{ labels:UNIDADES, datasets:[
+        { label:'Real', data:data.map(d=>d.real), backgroundColor:bg, borderRadius:3 },
+        { label:'Orçado', data:data.map(d=>d.planejado), backgroundColor:bgLine }
+      ]},
+      options: opts
+    });
+  }
+
+  // ---------------- KPIs ----------------
+  function renderKPIs(){
+    const months = periodMonths();
+    const units = state.unidades;
+    const grid = document.getElementById('kpiGrid');
+    grid.innerHTML='';
+
+    // direction: 'cost' = real acima do planejado é ruim (combustível, arla, custo/km).
+    // 'volume' = real ABAIXO do planejado é ruim (km rodado: rodar menos que o
+    // planejado é operação perdida, não economia). null/omitido = sem cor semântica.
+    function varyColor(v, direction){
+      if(v==null || !direction) return 'var(--text-muted)';
+      const bad = direction==='cost' ? v>0 : v<0;
+      return bad ? 'var(--bad)' : 'var(--good)';
+    }
+    function varyArrow(v){ return v==null ? '' : (v>0?'▲':'▼'); }
+
+    function card(label, real, plan, fmt, direction, prior, priorPlan){
+      const v = variance(real, plan);
+      let pillClass='pill-neutral', arrow='';
+      if(direction && v!=null){
+        const bad = direction==='cost' ? v>0 : v<0;
+        pillClass = bad ? 'pill-bad' : 'pill-good';
+      }
+      if(v!=null) arrow = v>0?'▲':'▼';
+      const pct = plan? Math.min(100, Math.max(0, real==null?0:(real/plan*100))) : 0;
+
+      let yoyHtml = '';
+      if(state.compareYoY){
+        // vY = como 2025 foi contra o orçado DELE (mesma leitura do pill de cima,
+        // mas pro ano anterior); vGrowth = quanto o real cresceu de 2025 pra 2026.
+        const vY = variance(prior, priorPlan);
+        const vGrowth = variance(real, prior);
+        yoyHtml = `<div class="k-sub">2025 · Real: <span class="num">${fmt(prior)}</span> &nbsp;Orçado: <span class="num">${fmt(priorPlan)}</span></div>`+
+          `<div class="k-sub" style="display:flex; gap:12px; flex-wrap:wrap;">`+
+            `<span>2025 vs orçado: <span class="num" style="color:${varyColor(vY,direction)}">${vY==null?'—':varyArrow(vY)+' '+fmtPct(Math.abs(vY)*Math.sign(vY))}</span></span>`+
+            `<span>2025→2026: <span class="num" style="color:${varyColor(vGrowth,direction)}">${vGrowth==null?'—':varyArrow(vGrowth)+' '+fmtPct(Math.abs(vGrowth)*Math.sign(vGrowth))}</span></span>`+
+          `</div>`;
+      }
+
+      const div = document.createElement('div');
+      div.className='kpi';
+      div.innerHTML = `
+        <div class="k-label">${label}</div>
+        <div class="k-real num">${fmt(real)}</div>
+        <div class="k-sub">Orçado: <span class="num">${fmt(plan)}</span></div>
+        ${yoyHtml}
+        <div class="k-pill ${pillClass}">${v==null?'sem meta no período':(arrow+' '+fmtPct(Math.abs(v)*Math.sign(v)))}</div>
+        <div class="k-bar"><div style="width:${pct}%"></div></div>
+      `;
+      grid.appendChild(div);
+    }
+
+    const priorMonths = state.compareYoY ? priorYearMonths(months) : [];
+
+    const combR = sumField(units,months,'combustivel','real'), combP = sumField(units,months,'combustivel','planejado');
+    const arlaR = sumField(units,months,'arla','real'), arlaP = sumField(units,months,'arla','planejado');
+    const kmR = sumField(units,months,'km','real'), kmP = sumField(units,months,'km','planejado');
+    const combPriorR = sumField(units,priorMonths,'combustivel','real');
+    const arlaPriorR = sumField(units,priorMonths,'arla','real');
+    const kmPriorR = sumField(units,priorMonths,'km','real');
+    const combPriorP = sumField(units,priorMonths,'combustivel','planejado');
+    const arlaPriorP = sumField(units,priorMonths,'arla','planejado');
+    const kmPriorP = sumField(units,priorMonths,'km','planejado');
+
+    card('Combustível (diesel)', combR, combP, fmtBRL, 'cost', combPriorR, combPriorP);
+    card('Arla 32', arlaR, arlaP, fmtBRL, 'cost', arlaPriorR, arlaPriorP);
+    card('KM rodado', kmR, kmP, fmtNum, 'volume', kmPriorR, kmPriorP);
+
+    const custoRealKm = (combR!=null && kmR) ? combR/kmR : null;
+    const custoPlanKm = (combP!=null && kmP) ? combP/kmP : null;
+    const custoPriorKm = (combPriorR!=null && kmPriorR) ? combPriorR/kmPriorR : null;
+    const custoPriorPlanKm = (combPriorP!=null && kmPriorP) ? combPriorP/kmPriorP : null;
+    card('Custo por KM (diesel)', custoRealKm, custoPlanKm, (v)=> v==null?'—': v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2}), 'cost', custoPriorKm, custoPriorPlanKm);
+  }
+
+  // ---------------- detail table ----------------
+  let sortKey='comb_var', sortDir=-1;
+  function buildRows(){
+    const months = periodMonths();
+    return UNIDADES.filter(u=>state.unidades.has(u)).map(u=>{
+      const cr = sumField([u],months,'combustivel','real'), cp = sumField([u],months,'combustivel','planejado');
+      const ar = sumField([u],months,'arla','real'), ap = sumField([u],months,'arla','planejado');
+      const kr = sumField([u],months,'km','real'), kp = sumField([u],months,'km','planejado');
+      return {
+        unidade:u, comb_real:cr, comb_plan:cp, comb_var:variance(cr,cp),
+        arla_real:ar, arla_plan:ap, arla_var:variance(ar,ap),
+        km_real:kr, km_plan:kp, km_var:variance(kr,kp)
+      };
+    });
+  }
+  function renderTable(){
+    const months = periodMonths();
+    document.getElementById('tblPeriodLabel').textContent = months.length ? (fmtMes(months[0])+' – '+fmtMes(months[months.length-1])) : '';
+    let rows = buildRows();
+    rows.sort((a,b)=>{
+      const av=a[sortKey], bv=b[sortKey];
+      if(av==null && bv==null) return 0;
+      if(av==null) return 1; if(bv==null) return -1;
+      return (av-bv)*sortDir;
+    });
+    const body = document.getElementById('detailBody');
+    body.innerHTML = rows.map(r=>{
+      // direction 'cost': real acima do planejado é ruim (vermelho). 'volume': real
+      // ABAIXO do planejado é ruim — rodar menos km que o planejado é prejuízo.
+      function varTag(v, direction){
+        if(v==null) return '<span class="num" style="color:var(--text-faint)">—</span>';
+        const bad = direction==='volume' ? v<0 : v>0;
+        const color = bad ? 'var(--bad)':'var(--good)';
+        return `<span class="num var-tag" style="color:${color}">${fmtPct(v)}</span>`;
+      }
+      return `<tr>
+        <td>${r.unidade}</td>
+        <td class="num">${fmtBRL(r.comb_real)}</td><td class="num">${fmtBRL(r.comb_plan)}</td><td>${varTag(r.comb_var,'cost')}</td>
+        <td class="num">${fmtBRL(r.arla_real)}</td><td class="num">${fmtBRL(r.arla_plan)}</td><td>${varTag(r.arla_var,'cost')}</td>
+        <td class="num">${fmtNum(r.km_real)}</td><td class="num">${fmtNum(r.km_plan)}</td><td>${varTag(r.km_var,'volume')}</td>
+      </tr>`;
+    }).join('');
+    document.querySelectorAll('#detailTable th').forEach(th=>{
+      th.classList.toggle('sorted', th.dataset.key===sortKey);
+    });
+  }
+  document.querySelectorAll('#detailTable th[data-key]').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const key = th.dataset.key;
+      if(sortKey===key) sortDir*=-1; else { sortKey=key; sortDir=-1; }
+      renderTable();
+    });
+  });
+
+  // ---------------- render ----------------
+  function render(){
+    document.querySelectorAll('#filialRow .chip[data-unidade]').forEach(chip=>{
+      chip.classList.toggle('active', state.unidades.has(chip.dataset.unidade));
+    });
+    document.querySelectorAll('#periodRow .preset').forEach(b=>{
+      b.classList.toggle('active', b.dataset.period===state.period);
+      b.disabled = state.compareYoY;
+      b.style.opacity = state.compareYoY ? .45 : '';
+      b.style.cursor = state.compareYoY ? 'not-allowed' : '';
+    });
+    document.querySelectorAll('.trend-title').forEach(el=>{
+      el.textContent = state.compareYoY
+        ? 'Comparativo anual — real 2025 x 2026'
+        : 'Evolução mensal — real x orçado · clique num mês pra filtrar';
+    });
+    const months = periodMonths();
+    let periodoTxt;
+    if(state.compareYoY){
+      periodoTxt = months.length
+        ? `comparando ${fmtMes(months[0])}–${fmtMes(months[months.length-1])} com o mesmo período de 2025`
+        : '–';
+    } else if(state.months){
+      periodoTxt = months.length<=4
+        ? months.map(fmtMes).join(', ')
+        : `${months.length} meses selecionados (${fmtMes(months[0])} a ${fmtMes(months[months.length-1])})`;
+      periodoTxt += ' <a href="#" id="clearMonthsLink" style="color:var(--accent); text-decoration:underline;">limpar seleção de meses</a>';
+    } else {
+      periodoTxt = months.length? `${months.length} mês(es): ${fmtMes(months[0])} a ${fmtMes(months[months.length-1])}` : '–';
+    }
+    const hintEl = document.getElementById('filterHint');
+    hintEl.innerHTML = `${state.unidades.size} de ${UNIDADES.length} filiais · ${periodoTxt}`;
+    const clearLink = document.getElementById('clearMonthsLink');
+    if(clearLink) clearLink.addEventListener('click', (ev)=>{ ev.preventDefault(); state.months=null; render(); });
+
+    renderKPIs();
+    renderTrendChart('chart-combustivel-trend','combustivel',true,'cost');
+    renderUnidChart('chart-combustivel-unid','combustivel',true);
+    renderTrendChart('chart-arla-trend','arla',true,'cost');
+    renderUnidChart('chart-arla-unid','arla',true);
+    renderTrendChart('chart-km-trend','km',false,'volume');
+    renderUnidChart('chart-km-unid','km',false);
+    renderTable();
+  }
+
+  // Renderiza já (pra não deixar a tela em branco), e de novo assim que as
+  // fontes (Google Fonts) terminarem de carregar — sem isso o Chart.js mede
+  // a largura do eixo com a fonte de reserva do navegador e nunca recalcula,
+  // o que corta prefixos como "R$" em telas mais estreitas.
+  render();
+  if (document.fonts && document.fonts.ready){
+    document.fonts.ready.then(render).catch(()=>{});
+  }
+  let resizeTimer;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(render, 200);
+  });
+})();
+</script>
